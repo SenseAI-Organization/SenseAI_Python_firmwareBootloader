@@ -1,0 +1,125 @@
+# SenseAI BLE Configurator - Git Ignore Rules
+# ==========================================
+
+# Python
+# -------
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# PyInstaller
+# -----------
+*.manifest
+*.spec.bak
+build_tools/version_info.txt
+
+# Virtual Environment
+# ------------------
+venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+
+# IDE & Editor Files
+# ------------------
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# Build Output & Distribution
+# ---------------------------
+output/build/
+output/dist/
+output/client_distribution/
+output/*.zip
+*.exe
+*.msi
+*.dmg
+*.pkg
+
+# Temporary Files
+# ---------------
+*.tmp
+*.temp
+*.log
+*.bak
+*.orig
+
+# Windows
+# -------
+*.lnk
+ehthumbs.db
+Desktop.ini
+
+# macOS
+# -----
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon?
+._*
+
+# Linux
+# -----
+*~
+.nfs*
+
+# Generated Icons (keep source, ignore generated)
+# -----------------------------------------------
+assets/icon.ico
+
+# PyInstaller Cache
+# -----------------
+.cache/
+*.pyc
+
+# Testing & Coverage
+# ------------------
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.nox/
+
+# Documentation Build
+# -------------------
+docs/_build/
+site/
+
+# Environment Variables
+# ---------------------
+.env
+.env.local
+.env.*.local
+
+# Application Specific
+# --------------------
+# Keep these patterns commented out - uncomment if you have these files:
+# config.json
+# settings.ini
+# *.key
+# *.pem
