@@ -8,6 +8,8 @@ import threading
 import struct
 import tempfile
 import hashlib
+import re
+import time
 
 def check_and_install_dependencies():
     """Check if required packages are installed and offer to install them"""
@@ -135,6 +137,12 @@ class ESP32Flasher:
         self.total_flashes = 0
         self.successful_flashes = 0
         self.flashed_devices = set()  # Store unique MAC addresses
+        
+        # Serial terminal variables
+        self.serial_connected = False
+        self.serial_thread = None
+        self.serial_baud = tk.StringVar(value="115200")
+        self.serial_port_obj = None  # serial.Serial object
         
         # ESP-IDF standard addresses (base - adjusted per chip)
         self.esp_idf_addresses = {
@@ -326,8 +334,9 @@ class ESP32Flasher:
         options_frame = ttk.LabelFrame(main_frame, text="Opciones", padding="5")
         options_frame.grid(row=4, column=0, sticky=(tk.W, tk.E), pady=3, padx=5)
         options_frame.columnconfigure(0, weight=1)
+        options_frame.columnconfigure(1, weight=0)  # For buttons on the right
         
-        # Preserve NVS with info button
+        # Preserve NVS
         nvs_frame = ttk.Frame(options_frame)
         nvs_frame.grid(row=0, column=0, sticky=(tk.W, tk.E), pady=2)
         nvs_frame.columnconfigure(0, weight=1)
@@ -336,8 +345,17 @@ class ESP32Flasher:
         ttk.Checkbutton(nvs_frame, text="🔒 Preservar NVS/WiFi (solo Complete Mode)", 
                        variable=self.preserve_nvs).grid(row=0, column=0, sticky=tk.W)
         
-        info_btn = ttk.Button(nvs_frame, text="ℹ️", width=3, command=self.show_mode_info)
-        info_btn.grid(row=0, column=1, sticky=tk.E, padx=(5, 0))
+        # SPIFFS buttons on the right
+        spiffs_button_frame = ttk.Frame(options_frame)
+        spiffs_button_frame.grid(row=0, column=1, rowspan=5, padx=(20, 0), sticky=(tk.N, tk.S))
+        
+        self.upload_data_btn = ttk.Button(spiffs_button_frame, text="📤 Upload Data\nFolder (SPIFFS)", 
+                                         command=self.upload_data_folder, width=15)
+        self.upload_data_btn.pack(pady=2)
+        
+        self.verify_spiffs_btn = ttk.Button(spiffs_button_frame, text="🔍 Verificar\nSPIFFS", 
+                                           command=self.verify_spiffs_manual, width=15)
+        self.verify_spiffs_btn.pack(pady=2)
         
         # Preserve Bootloader
         self.preserve_bootloader = tk.BooleanVar(value=False)
@@ -390,32 +408,23 @@ class ESP32Flasher:
                                            command=self.fix_invalid_header, width=12)
         self.fix_bootloader_btn.grid(row=0, column=3, padx=2, sticky=(tk.W, tk.E))
         
-        # === DATA UPLOAD BUTTON (second row) ===
-        data_buttons_frame = ttk.Frame(main_frame)
-        data_buttons_frame.grid(row=5, column=0, columnspan=3, pady=(5, 10))
-        
-        self.upload_data_btn = ttk.Button(data_buttons_frame, text="📤 Upload Data Folder (SPIFFS)", 
-                                         command=self.upload_data_folder, width=30)
-        self.upload_data_btn.pack(side=tk.LEFT, padx=5)
-        
-        self.verify_spiffs_btn = ttk.Button(data_buttons_frame, text="🔍 Verificar SPIFFS", 
-                                           command=self.verify_spiffs_manual, width=20)
-        self.verify_spiffs_btn.pack(side=tk.LEFT, padx=5)
+
         
         # === PROGRESS BAR ===
-        self.progress = ttk.Progressbar(main_frame, mode='indeterminate')
+        self.progress = ttk.Progressbar(main_frame, mode='determinate', maximum=100)
         self.progress.grid(row=7, column=0, pady=10, sticky=(tk.W, tk.E), padx=5)
         
         # === LOG AREA ===
         log_header_frame = ttk.Frame(main_frame)
         log_header_frame.grid(row=8, column=0, sticky=(tk.W, tk.E), pady=(10, 5), padx=5)
         log_header_frame.columnconfigure(0, weight=1)
+        log_header_frame.columnconfigure(1, weight=0)
         
-        ttk.Label(log_header_frame, text="Log de Proceso:", 
-                 font=('Arial', 10, 'bold')).pack(side=tk.LEFT)
-        
+        # === STATUS LABEL ===
+        self.status_label = ttk.Label(log_header_frame, text="Idle", font=('Arial', 9, 'bold'), foreground="blue")
+        self.status_label.grid(row=0, column=0, sticky=(tk.W, tk.E))
         save_log_btn = ttk.Button(log_header_frame, text="💾", command=self.save_log_to_file, width=5)
-        save_log_btn.pack(side=tk.RIGHT)
+        save_log_btn.grid(row=0, column=1, sticky=tk.E)
         
         self.log_text = scrolledtext.ScrolledText(main_frame, height=12, wrap=tk.WORD, state='disabled')
         self.log_text.grid(row=9, column=0, pady=5, sticky=(tk.W, tk.E, tk.N, tk.S), padx=5)
@@ -443,43 +452,64 @@ class ESP32Flasher:
         self.root.after(10, lambda: self.root.update_idletasks())
     
     def setup_debug_panel(self, parent):
-        """Setup the right panel with debug, serial, and session info"""
+        """Setup the right panel with debug, serial terminal, and session info"""
         parent.columnconfigure(0, weight=1)
-        parent.rowconfigure(0, weight=1)
-        parent.rowconfigure(1, weight=1)
-        parent.rowconfigure(2, weight=0)
+        parent.rowconfigure(0, weight=0)  # Debug (fixed size)
+        parent.rowconfigure(1, weight=0)  # Serial controls (fixed size)
+        parent.rowconfigure(2, weight=1)  # Serial terminal (expands)
+        parent.rowconfigure(3, weight=0)  # Session info (fixed size)
         
-        # === DEBUG MESSAGES ===
+        # === DEBUG MESSAGES === (smaller)
         debug_label_frame = ttk.Frame(parent)
-        debug_label_frame.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S), pady=(0, 5))
+        debug_label_frame.grid(row=0, column=0, sticky=(tk.W, tk.E), pady=(0, 2))
         debug_label_frame.columnconfigure(0, weight=1)
         
         ttk.Label(debug_label_frame, text="Debug:", font=('Arial', 10, 'bold')).pack(side=tk.LEFT)
         ttk.Button(debug_label_frame, text="🗑️", command=lambda: self.clear_text(self.debug_text), width=5).pack(side=tk.RIGHT)
         
-        self.debug_text = scrolledtext.ScrolledText(parent, height=10, width=40, state='disabled', 
+        self.debug_text = scrolledtext.ScrolledText(parent, height=6, width=40, state='disabled', 
                                                      wrap=tk.WORD, font=('Consolas', 8))
-        self.debug_text.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S), pady=(25, 5))
+        self.debug_text.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N), pady=(25, 2))
         self.debug_text.tag_config("debug", foreground="gray")
         self.debug_text.tag_config("verbose", foreground="#666666")
         
-        # === SERIAL MONITOR ===
+        # === SERIAL CONTROLS ===
+        controls_frame = ttk.Frame(parent)
+        controls_frame.grid(row=1, column=0, sticky=(tk.W, tk.E), pady=(0, 2))
+        controls_frame.columnconfigure(1, weight=1)
+        
+        # Connect/Disconnect button
+        self.connect_btn = ttk.Button(controls_frame, text="🔌 Connect", command=self.toggle_serial_connection, width=15)
+        self.connect_btn.pack(side=tk.LEFT, padx=(0, 5))
+        
+        # Baudrate selection
+        ttk.Label(controls_frame, text="Baud:", font=('Arial', 8)).pack(side=tk.LEFT, padx=(0, 2))
+        self.serial_baud_combo = ttk.Combobox(controls_frame, textvariable=self.serial_baud, state="readonly", width=10)
+        self.serial_baud_combo['values'] = ['9600', '19200', '38400', '57600', '115200', '230400', '460800', '921600']
+        self.serial_baud_combo.pack(side=tk.LEFT, padx=(0, 5))
+        
+        # Advanced options button
+        self.serial_advanced_btn = ttk.Button(controls_frame, text="⚙️", command=self.show_serial_advanced, width=5)
+        self.serial_advanced_btn.pack(side=tk.RIGHT)
+        
+        # === SERIAL TERMINAL ===
         serial_label_frame = ttk.Frame(parent)
-        serial_label_frame.grid(row=1, column=0, sticky=(tk.W, tk.E, tk.N, tk.S), pady=(0, 5))
+        serial_label_frame.grid(row=2, column=0, sticky=(tk.W, tk.E), pady=(0, 5))
         serial_label_frame.columnconfigure(0, weight=1)
         
-        ttk.Label(serial_label_frame, text="Serial:", font=('Arial', 10, 'bold')).pack(side=tk.LEFT)
+        ttk.Label(serial_label_frame, text="Serial Terminal:", font=('Arial', 10, 'bold')).pack(side=tk.LEFT)
         ttk.Button(serial_label_frame, text="🗑️", command=lambda: self.clear_text(self.serial_text), width=5).pack(side=tk.RIGHT)
         
-        self.serial_text = scrolledtext.ScrolledText(parent, height=10, width=40, state='disabled', 
+        self.serial_text = scrolledtext.ScrolledText(parent, height=12, width=40, state='disabled', 
                                                       wrap=tk.WORD, font=('Consolas', 8))
-        self.serial_text.grid(row=1, column=0, sticky=(tk.W, tk.E, tk.N, tk.S), pady=(25, 5))
+        self.serial_text.grid(row=2, column=0, sticky=(tk.W, tk.E, tk.N, tk.S), pady=(25, 5))
         self.serial_text.tag_config("tx", foreground="blue")
         self.serial_text.tag_config("rx", foreground="green")
+        self.serial_text.tag_config("info", foreground="orange")
         
         # === SESSION INFO ===
         session_frame = ttk.LabelFrame(parent, text="Sesión", padding="5")
-        session_frame.grid(row=2, column=0, sticky=(tk.W, tk.E), pady=5)
+        session_frame.grid(row=3, column=0, sticky=(tk.W, tk.E), pady=5)
         session_frame.columnconfigure(1, weight=1)
         
         # Stats
@@ -540,13 +570,123 @@ class ESP32Flasher:
             self.root.update()
     
     def log_serial(self, message, direction="rx"):
-        """Log serial communication (tx=sent, rx=received)"""
+        """Log serial communication to debug panel (for esptool communication)"""
         prefix = "→ TX:" if direction == "tx" else "← RX:"
+        self.debug_text.config(state='normal')
+        self.debug_text.insert(tk.END, f"{prefix} {message}\n", "verbose")
+        self.debug_text.see(tk.END)
+        self.debug_text.config(state='disabled')
+        self.root.update()
+    
+    def write_to_serial_terminal(self, message, tag="rx"):
+        """Write to the serial terminal (for actual serial data)"""
         self.serial_text.config(state='normal')
-        self.serial_text.insert(tk.END, f"{prefix} {message}\n", direction)
+        self.serial_text.insert(tk.END, f"{message}", tag)
         self.serial_text.see(tk.END)
         self.serial_text.config(state='disabled')
         self.root.update()
+    
+    def toggle_serial_connection(self):
+        """Connect or disconnect from serial port"""
+        if self.serial_connected:
+            self.disconnect_serial()
+        else:
+            self.connect_serial()
+    
+    def connect_serial(self):
+        """Connect to the selected serial port"""
+        if not self.selected_port.get():
+            messagebox.showerror("Error", "Selecciona un puerto COM primero")
+            return
+        
+        port_name = self.selected_port.get().split(' - ')[0]
+        baud_rate = int(self.serial_baud.get())
+        
+        try:
+            import serial
+            self.serial_port_obj = serial.Serial(
+                port=port_name,
+                baudrate=baud_rate,
+                timeout=0.1,
+                write_timeout=1
+            )
+            
+            self.serial_connected = True
+            self.connect_btn.config(text="🔌 Disconnect")
+            self.serial_baud_combo.config(state='disabled')
+            self.write_to_serial_terminal(f"Connected to {port_name} at {baud_rate} baud\n", "info")
+            self.log_debug(f"Serial connected to {port_name}@{baud_rate}")
+            
+            # Start reading thread
+            self.serial_thread = threading.Thread(target=self._serial_read_thread, daemon=True)
+            self.serial_thread.start()
+            
+        except Exception as e:
+            messagebox.showerror("Error", f"Error conectando al puerto serial:\n\n{str(e)}")
+            self.log_debug(f"Serial connection failed: {e}")
+    
+    def disconnect_serial(self):
+        """Disconnect from serial port"""
+        self.serial_connected = False
+        if self.serial_port_obj and self.serial_port_obj.is_open:
+            self.serial_port_obj.close()
+        
+        self.connect_btn.config(text="🔌 Connect")
+        self.serial_baud_combo.config(state='readonly')
+        self.write_to_serial_terminal("Disconnected\n", "info")
+        self.log_debug("Serial disconnected")
+        self.serial_port_obj = None
+    
+    def _serial_read_thread(self):
+        """Thread to continuously read from serial port"""
+        while self.serial_connected and self.serial_port_obj and self.serial_port_obj.is_open:
+            try:
+                if self.serial_port_obj.in_waiting > 0:
+                    data = self.serial_port_obj.read(self.serial_port_obj.in_waiting)
+                    if data:
+                        # Try to decode as UTF-8, fallback to latin-1
+                        try:
+                            text = data.decode('utf-8')
+                        except UnicodeDecodeError:
+                            text = data.decode('latin-1')
+                        
+                        self.write_to_serial_terminal(text, "rx")
+                
+                time.sleep(0.01)  # Small delay to prevent busy waiting
+                
+            except Exception as e:
+                if self.serial_connected:  # Only log if not intentionally disconnected
+                    self.log_debug(f"Serial read error: {e}")
+                    self.write_to_serial_terminal(f"Read error: {e}\n", "info")
+                break
+    
+    def show_serial_advanced(self):
+        """Show advanced serial options dialog"""
+        # Simple dialog for now - can be expanded
+        advanced_window = tk.Toplevel(self.root)
+        advanced_window.title("Serial Advanced Options")
+        advanced_window.geometry("300x200")
+        advanced_window.resizable(False, False)
+        
+        # Center window
+        advanced_window.update_idletasks()
+        x = (advanced_window.winfo_screenwidth() // 2) - (advanced_window.winfo_width() // 2)
+        y = (advanced_window.winfo_screenheight() // 2) - (advanced_window.winfo_height() // 2)
+        advanced_window.geometry(f"+{x}+{y}")
+        
+        ttk.Label(advanced_window, text="Advanced serial options", 
+                 font=('Arial', 12, 'bold')).pack(pady=10)
+        
+        # Flow control options (placeholder for now)
+        flow_frame = ttk.LabelFrame(advanced_window, text="Flow Control", padding="10")
+        flow_frame.pack(fill='x', padx=10, pady=5)
+        
+        self.flow_control = tk.StringVar(value="none")
+        ttk.Radiobutton(flow_frame, text="None", variable=self.flow_control, value="none").pack(anchor=tk.W)
+        ttk.Radiobutton(flow_frame, text="RTS/CTS", variable=self.flow_control, value="rtscts").pack(anchor=tk.W)
+        ttk.Radiobutton(flow_frame, text="XON/XOFF", variable=self.flow_control, value="xonxoff").pack(anchor=tk.W)
+        
+        ttk.Button(advanced_window, text="OK", command=advanced_window.destroy).pack(pady=10)
     
     def save_log_to_file(self):
         """Save all logs to a file"""
@@ -1117,8 +1257,8 @@ class ESP32Flasher:
                 "--chip", chip,
                 "--port", port,
                 "--baud", str(self.selected_baud.get()),
-                "--before", "default_reset",
-                "--after", "hard_reset",
+                "--before", "default-reset",
+                "--after", "hard-reset",
                 "write-flash",
                 "-z",  # Compress
                 "--flash_mode", "dio",
@@ -1143,6 +1283,26 @@ class ESP32Flasher:
             for line in iter(process.stdout.readline, ''):
                 if line:
                     line = line.strip()
+                    match = re.search(r'(\d+\.\d+)%', line)
+                    if match:
+                        percent = float(match.group(1))
+                        self.progress['value'] = percent
+                        self.root.update_idletasks()
+                    
+                    # Update status label
+                    if "Connecting" in line:
+                        self.status_label.config(text="🔌 Connecting to device...")
+                    elif "Erasing" in line or "erase" in line.lower():
+                        self.status_label.config(text="🗑️ Erasing flash...")
+                    elif "Writing at" in line:
+                        self.status_label.config(text="📤 Uploading bootloader...")
+                    elif "Hash of data verified" in line:
+                        self.status_label.config(text="✅ Verifying bootloader...")
+                    elif "Compressed" in line:
+                        self.status_label.config(text="📦 Compressing bootloader...")
+                    elif "Uploading" in line:
+                        self.status_label.config(text="📤 Uploading stub...")
+                    
                     self.log_debug(f"esptool: {line}")
                     
                     # Show progress
@@ -1227,7 +1387,7 @@ class ESP32Flasher:
                         python_exe, "-m", "esptool",
                         "--port", port,
                         "--baud", "115200",
-                        "read_flash", "0x0", "0x5000", temp_bootloader
+                        "read-flash", "0x0", "0x5000", temp_bootloader
                     ]
                     
                     result = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
@@ -1314,7 +1474,7 @@ class ESP32Flasher:
                 "--chip", chip,
                 "--port", port,
                 "--baud", str(self.selected_baud.get()),
-                "erase_flash"
+                "erase-flash"
             ]
             
             result = subprocess.run(erase_cmd, capture_output=True, text=True, timeout=60)
@@ -1359,8 +1519,8 @@ class ESP32Flasher:
                 "--chip", chip,
                 "--port", port,
                 "--baud", str(self.selected_baud.get()),
-                "--before", "default_reset",
-                "--after", "hard_reset",
+                "--before", "default-reset",
+                "--after", "hard-reset",
                 "write_flash",
                 "-z"  # Compress
             ]
@@ -1583,6 +1743,26 @@ spiffs,      data, spiffs,  0x2A0000, 1472K
             for line in iter(process.stdout.readline, ''):
                 if line:
                     line = line.strip()
+                    match = re.search(r'(\d+\.\d+)%', line)
+                    if match:
+                        percent = float(match.group(1))
+                        self.progress['value'] = percent
+                        self.root.update_idletasks()
+                    
+                    # Update status label
+                    if "Connecting" in line:
+                        self.status_label.config(text="🔌 Connecting to device...")
+                    elif "Erasing" in line or "erase" in line.lower():
+                        self.status_label.config(text="🗑️ Erasing flash...")
+                    elif "Writing at" in line:
+                        self.status_label.config(text="📤 Uploading SPIFFS...")
+                    elif "Hash of data verified" in line:
+                        self.status_label.config(text="✅ Verifying SPIFFS...")
+                    elif "Compressed" in line:
+                        self.status_label.config(text="📦 Compressing SPIFFS...")
+                    elif "Uploading" in line:
+                        self.status_label.config(text="📤 Uploading stub...")
+                    
                     self.log_debug(f"esptool: {line}")
                     
                     if "Writing at" in line or "Wrote" in line or "Hash of data verified" in line:
@@ -1836,7 +2016,7 @@ spiffs,      data, spiffs,  0x2A0000, 1472K
                 "--chip", chip,
                 "--port", port,
                 "--baud", "115200",
-                "read_flash",
+                "read-flash",
                 "0x8000", "0x1000",  # Read 4KB partition table
                 temp_file
             ]
@@ -2266,6 +2446,8 @@ spiffs,      data, spiffs,  0x2A0000, 1472K
         self.upload_data_btn.config(state=state)
         self.verify_spiffs_btn.config(state=state)
         self.refresh_btn.config(state=state)
+        self.connect_btn.config(state=state)
+        self.serial_advanced_btn.config(state=state)
     
     def start_flash(self):
         """Start flashing process in a separate thread"""
@@ -2294,6 +2476,10 @@ spiffs,      data, spiffs,  0x2A0000, 1472K
         # Extract port name
         port = self.selected_port.get().split(' - ')[0]
         
+        # Disconnect serial if connected (to free the port)
+        if self.serial_connected:
+            self.disconnect_serial()
+        
         # Confirm
         mode_desc = "Simple" if self.flash_mode.get() == "simple" else "Complete"
         confirm_msg = f"¿Flashear firmware en {port}?\n\n" \
@@ -2311,7 +2497,7 @@ spiffs,      data, spiffs,  0x2A0000, 1472K
         # Start flashing thread
         self.is_flashing = True
         self.set_buttons_state('disabled')
-        self.progress.start()
+        self.progress['value'] = 0
         
         thread = threading.Thread(target=self.flash_firmware, args=(port,))
         thread.daemon = True
@@ -2367,8 +2553,8 @@ spiffs,      data, spiffs,  0x2A0000, 1472K
                 "--chip", chip,
                 "--port", port,
                 "--baud", baud_rate,
-                "--before", "default_reset",
-                "--after", "hard_reset"
+                "--before", "default-reset",
+                "--after", "hard-reset"
             ]
             
             # STEP 1: Erase flash if needed
@@ -2432,7 +2618,7 @@ spiffs,      data, spiffs,  0x2A0000, 1472K
                     "--chip", chip,
                     "--port", port,
                     "--baud", baud_rate,
-                    "read_mac"
+                    "read-mac"
                 ]
                 self.log_debug("Obteniendo MAC address del dispositivo...")
                 mac_result = subprocess.run(mac_cmd, capture_output=True, text=True, timeout=10)
@@ -2524,9 +2710,9 @@ spiffs,      data, spiffs,  0x2A0000, 1472K
                 "flash_files": [],  # List of (address, filepath, description) tuples
                 "extra_args": {
                     "chip": self.selected_chip.get(),
-                    "before": "default_reset",
-                    "after": "hard_reset",
-                    "verify": self.verify_flash.get()
+                    "before": "default-reset",
+                    "after": "hard-reset"
+                    # Note: verify removed in esptool v5+ (verification is automatic)
                 }
             }
             
@@ -2845,6 +3031,26 @@ spiffs,      data, spiffs,  0x2A0000, 1472K
             for line in process.stdout:
                 line = line.strip()
                 if line:
+                    match = re.search(r'(\d+\.\d+)%', line)
+                    if match:
+                        percent = float(match.group(1))
+                        self.progress['value'] = percent
+                        self.root.update_idletasks()
+                    
+                    # Update status label based on esptool output
+                    if "Connecting" in line:
+                        self.status_label.config(text="🔌 Connecting to device...")
+                    elif "Erasing" in line or "erase" in line.lower():
+                        self.status_label.config(text="🗑️ Erasing flash...")
+                    elif "Writing at" in line:
+                        self.status_label.config(text="📤 Uploading data...")
+                    elif "Hash of data verified" in line:
+                        self.status_label.config(text="✅ Verifying upload...")
+                    elif "Compressed" in line:
+                        self.status_label.config(text="📦 Compressing data...")
+                    elif "Uploading" in line:
+                        self.status_label.config(text="📤 Uploading stub...")
+                    
                     output_lines.append(line)
                     self.log_debug(f"esptool: {line}", "verbose")
                     
@@ -2924,7 +3130,7 @@ spiffs,      data, spiffs,  0x2A0000, 1472K
         # Iniciar borrado en un hilo separado
         self.is_flashing = True
         self.set_buttons_state('disabled')
-        self.progress.start()
+        self.progress['value'] = 0
         
         thread = threading.Thread(target=self.erase_flash_chip, args=(port,))
         thread.daemon = True
@@ -2956,7 +3162,7 @@ spiffs,      data, spiffs,  0x2A0000, 1472K
         # Iniciar borrado en un hilo separado
         self.is_flashing = True
         self.set_buttons_state('disabled')
-        self.progress.start()
+        self.progress['value'] = 0
         
         thread = threading.Thread(target=self.erase_nvs_partition, args=(port,))
         thread.daemon = True
@@ -3077,7 +3283,7 @@ spiffs,      data, spiffs,  0x2A0000, 1472K
                 "--chip", chip,
                 "--port", port,
                 "--baud", baud_rate,
-                "erase_flash"
+                "erase-flash"
             ]
             
             self.log(f"Comando: {' '.join(cmd)}", "info")
