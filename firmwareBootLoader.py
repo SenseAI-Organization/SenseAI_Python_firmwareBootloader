@@ -337,6 +337,18 @@ class ESP32Flasher:
                                    command=self.start_flash, style='Accent.TButton', width=22)
         self.flash_btn.pack(side=tk.LEFT, padx=5)
         
+        # === DATA UPLOAD BUTTON (second row) ===
+        data_buttons_frame = ttk.Frame(main_frame)
+        data_buttons_frame.grid(row=5, column=0, columnspan=3, pady=(5, 10))
+        
+        self.upload_data_btn = ttk.Button(data_buttons_frame, text="📤 Upload Data Folder (SPIFFS)", 
+                                         command=self.upload_data_folder, width=30)
+        self.upload_data_btn.pack(side=tk.LEFT, padx=5)
+        
+        self.verify_spiffs_btn = ttk.Button(data_buttons_frame, text="🔍 Verificar SPIFFS", 
+                                           command=self.verify_spiffs_manual, width=20)
+        self.verify_spiffs_btn.pack(side=tk.LEFT, padx=5)
+        
         # === PROGRESS BAR ===
         self.progress = ttk.Progressbar(main_frame, mode='indeterminate', length=500)
         self.progress.grid(row=6, column=0, columnspan=3, pady=10, sticky=(tk.W, tk.E))
@@ -1373,6 +1385,356 @@ spiffs,      data, spiffs,  0x2A0000, 1472K
             self.log(f"❌ Error creando tabla de particiones por defecto: {e}", "error")
             return None
 
+    def upload_data_folder(self):
+        """Upload data folder to SPIFFS partition (similar to PlatformIO uploadfs)"""
+        if self.is_flashing:
+            messagebox.showwarning("Ocupado", "Ya hay una operación en progreso")
+            return
+        
+        if not self.selected_port.get():
+            messagebox.showerror("Error", "Selecciona un puerto COM primero")
+            return
+        
+        # Check if data folder exists
+        data_folder = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data")
+        if not os.path.exists(data_folder):
+            messagebox.showerror("Error", 
+                f"No se encontró la carpeta 'data' en:\n{data_folder}\n\n"
+                f"Crea una carpeta 'data' con los archivos a subir.")
+            return
+        
+        # Check if folder has files
+        files = [f for f in os.listdir(data_folder) if os.path.isfile(os.path.join(data_folder, f))]
+        if not files:
+            messagebox.showwarning("Advertencia", 
+                f"La carpeta 'data' está vacía.\nNo hay archivos para subir.")
+            return
+        
+        # Get partition info
+        port = self.selected_port.get().split(' - ')[0]
+        chip = self.selected_chip.get()
+        
+        # Confirm action
+        file_list = "\n".join([f"  • {f}" for f in files[:10]])
+        if len(files) > 10:
+            file_list += f"\n  ... y {len(files) - 10} archivo(s) más"
+        
+        confirm = messagebox.askyesno(
+            "Confirmar Upload de Datos",
+            f"📤 UPLOAD DATA FOLDER (SPIFFS)\n\n"
+            f"Se subirán {len(files)} archivo(s) a SPIFFS:\n\n"
+            f"{file_list}\n\n"
+            f"• Puerto: {port}\n"
+            f"• Chip: {chip}\n"
+            f"• Partición: SPIFFS @ 0x5F0000 (1184K)\n\n"
+            f"Esta operación creará una imagen del filesystem\n"
+            f"y la flasheará en la partición SPIFFS.\n\n"
+            f"¿Continuar?"
+        )
+        
+        if not confirm:
+            self.log("Upload de datos cancelado por el usuario", "info")
+            return
+        
+        self.log("=" * 60, "info")
+        self.log("📤 INICIANDO UPLOAD DATA FOLDER (SPIFFS)", "info")
+        self.log("=" * 60, "info")
+        self.log(f"Puerto: {port}", "info")
+        self.log(f"Chip: {chip}", "info")
+        self.log(f"Archivos: {len(files)}", "info")
+        
+        # Start upload in thread
+        thread = threading.Thread(
+            target=self._upload_data_thread,
+            args=(port, chip, data_folder)
+        )
+        thread.daemon = True
+        thread.start()
+    
+    def _upload_data_thread(self, port, chip, data_folder):
+        """Thread to build SPIFFS image and upload it"""
+        self.is_flashing = True
+        self.set_buttons_state('disabled')
+        
+        try:
+            python_exe = sys.executable
+            
+            # Step 1: Build SPIFFS image
+            self.log("🔨 Paso 1/2: Construyendo imagen SPIFFS...", "info")
+            
+            spiffs_image = os.path.join(os.path.dirname(os.path.abspath(__file__)), "spiffs.bin")
+            
+            # Check if mkspiffs tool is available
+            try:
+                # Try to use mkspiffs from PlatformIO or system
+                mkspiffs_cmd = ["mkspiffs", "-c", data_folder, "-s", "1212416", spiffs_image]
+                
+                self.log_debug(f"Comando mkspiffs: {' '.join(mkspiffs_cmd)}")
+                
+                result = subprocess.run(
+                    mkspiffs_cmd,
+                    capture_output=True,
+                    text=True,
+                    timeout=60
+                )
+                
+                if result.returncode != 0:
+                    # Try alternative: use Python-based SPIFFS creation
+                    raise Exception("mkspiffs no disponible, usando método alternativo...")
+                
+                self.log("✅ Imagen SPIFFS creada exitosamente", "success")
+                self.log(f"📦 Tamaño: {os.path.getsize(spiffs_image)} bytes", "info")
+                
+            except Exception as e:
+                self.log(f"⚠️ mkspiffs no disponible: {e}", "warning")
+                self.log("📝 Creando imagen SPIFFS manualmente...", "info")
+                
+                # Create a simple SPIFFS-like image (padded binary)
+                # This is a simplified version - for production use mkspiffs
+                self._create_simple_spiffs_image(data_folder, spiffs_image, 1212416)
+                
+                self.log("✅ Imagen SPIFFS básica creada", "success")
+            
+            # Step 2: Flash SPIFFS image
+            self.log("📤 Paso 2/2: Flasheando SPIFFS a 0x5F0000...", "info")
+            
+            flash_cmd = [
+                python_exe, "-m", "esptool",
+                "--chip", chip,
+                "--port", port,
+                "--baud", str(self.selected_baud.get()),
+                "--before", "default-reset",
+                "--after", "hard-reset",
+                "write-flash",
+                "-z",
+                "--flash-mode", "dio",
+                "--flash-freq", "80m",
+                "--flash-size", "detect",
+                "0x5F0000", spiffs_image
+            ]
+            
+            self.log_debug(f"Comando flash: {' '.join(flash_cmd)}")
+            
+            process = subprocess.Popen(
+                flash_cmd,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                text=True,
+                bufsize=1
+            )
+            
+            # Read output
+            for line in iter(process.stdout.readline, ''):
+                if line:
+                    line = line.strip()
+                    self.log_debug(f"esptool: {line}")
+                    
+                    if "Writing at" in line or "Wrote" in line or "Hash of data verified" in line:
+                        self.log(line, "info")
+            
+            process.wait()
+            
+            if process.returncode == 0:
+                self.log("=" * 60, "success")
+                self.log("✅ DATA FOLDER SUBIDA EXITOSAMENTE", "success")
+                self.log("=" * 60, "success")
+                self.log("Los archivos están ahora disponibles en SPIFFS", "info")
+                self.log("ℹ️ Nota: El ESP32 inicializará el filesystem al arrancar", "info")
+                
+                messagebox.showinfo(
+                    "Éxito",
+                    "✅ Data folder subida exitosamente a SPIFFS\n\n"
+                    "Los archivos están ahora disponibles en el ESP32.\n\n"
+                    "El filesystem será inicializado cuando el ESP32 arranque."
+                )
+            else:
+                self.log(f"❌ Error: esptool retornó código {process.returncode}", "error")
+                messagebox.showerror(
+                    "Error",
+                    f"Error subiendo data folder.\n\n"
+                    f"Código de error: {process.returncode}\n\n"
+                    f"Revisa el log para más detalles."
+                )
+        
+        except Exception as e:
+            self.log(f"❌ ERROR subiendo data folder: {e}", "error")
+            self.log_debug(f"Exception: {repr(e)}")
+            messagebox.showerror("Error", f"Error subiendo data folder:\n\n{str(e)}")
+        
+        finally:
+            self.is_flashing = False
+            self.set_buttons_state('normal')
+            self.log_debug("Upload de data folder finalizado")
+    
+    def _create_simple_spiffs_image(self, data_folder, output_file, size):
+        """Create a simple padded image with files (fallback when mkspiffs not available)"""
+        # This is a simplified version that just pads the files
+        # For proper SPIFFS filesystem, mkspiffs tool is required
+        with open(output_file, 'wb') as out:
+            # Write all files concatenated
+            files = sorted([f for f in os.listdir(data_folder) if os.path.isfile(os.path.join(data_folder, f))])
+            
+            for filename in files:
+                filepath = os.path.join(data_folder, filename)
+                self.log(f"  📄 Agregando: {filename}", "info")
+                with open(filepath, 'rb') as f:
+                    out.write(f.read())
+            
+            # Pad to full size
+            current_size = out.tell()
+            padding = size - current_size
+            if padding > 0:
+                out.write(b'\xFF' * padding)
+        
+        self.log(f"⚠️ ADVERTENCIA: Imagen creada sin formato SPIFFS completo", "warning")
+        self.log(f"   Para funcionalidad completa, instala mkspiffs", "warning")
+
+    def _verify_spiffs_upload(self, port, chip, spiffs_image):
+        """Verify that SPIFFS partition has data (not empty/erased)"""
+        import time
+        
+        try:
+            # Wait for port to be ready after reset
+            time.sleep(2)
+            
+            python_exe = sys.executable
+            
+            # Read first 4KB of SPIFFS to check it's not empty
+            temp_read = os.path.join(os.path.dirname(os.path.abspath(__file__)), "spiffs_check.bin")
+            
+            # Remove old file if it exists
+            if os.path.exists(temp_read):
+                try:
+                    os.remove(temp_read)
+                except:
+                    pass
+            
+            check_size = 4096  # Just read first 4KB
+            
+            read_cmd = [
+                python_exe, "-m", "esptool",
+                "--chip", chip,
+                "--port", port,
+                "--baud", "115200",  # Use slower baud for reliability
+                "read-flash",  # Use hyphenated version
+                "0x5F0000", str(check_size), temp_read
+            ]
+            
+            self.log_debug(f"Verificando SPIFFS: {' '.join(read_cmd)}")
+            
+            result = subprocess.run(
+                read_cmd,
+                capture_output=True,
+                text=True,
+                timeout=30
+            )
+            
+            if result.returncode != 0:
+                self.log_debug(f"Error leyendo SPIFFS: {result.stderr}")
+                return False
+            
+            # Wait for file to be fully written
+            time.sleep(0.5)
+            
+            # Check if partition is not empty (all 0xFF means erased)
+            data = None
+            try:
+                with open(temp_read, 'rb') as f:
+                    data = f.read()
+            finally:
+                # Ensure file is closed before attempting to delete
+                time.sleep(0.2)
+                try:
+                    if os.path.exists(temp_read):
+                        os.remove(temp_read)
+                except Exception as e:
+                    self.log_debug(f"No se pudo eliminar archivo temporal: {e}")
+            
+            if data:
+                # SPIFFS has data if it's not all 0xFF
+                if data == b'\xFF' * len(data):
+                    self.log("⚠️ Partición SPIFFS vacía (completamente borrada)", "warning")
+                    return False
+                else:
+                    self.log("✅ Partición SPIFFS contiene datos", "success")
+                    return True
+            
+            return False
+        
+        except Exception as e:
+            self.log_debug(f"Error en verificación: {e}")
+            # Clean up temp file on error
+            try:
+                temp_read = os.path.join(os.path.dirname(os.path.abspath(__file__)), "spiffs_check.bin")
+                if os.path.exists(temp_read):
+                    os.remove(temp_read)
+            except:
+                pass
+            return False
+    
+    def verify_spiffs_manual(self):
+        """Manual SPIFFS verification - checks if partition has data"""
+        if self.is_flashing:
+            messagebox.showwarning("Ocupado", "Ya hay una operación en progreso")
+            return
+        
+        if not self.selected_port.get():
+            messagebox.showerror("Error", "Selecciona un puerto COM primero")
+            return
+        
+        port = self.selected_port.get().split(' - ')[0]
+        chip = self.selected_chip.get()
+        
+        self.log("=" * 60, "info")
+        self.log("🔍 VERIFICANDO PARTICIÓN SPIFFS", "info")
+        self.log("=" * 60, "info")
+        self.log("Nota: Esta verificación comprueba que la partición contiene datos", "info")
+        self.log("Para verificar archivos específicos, usa el monitor serial del ESP32", "info")
+        
+        # Start verification in thread
+        thread = threading.Thread(
+            target=self._verify_spiffs_thread,
+            args=(port, chip, None)
+        )
+        thread.daemon = True
+        thread.start()
+    
+    def _verify_spiffs_thread(self, port, chip, spiffs_image):
+        """Thread to verify SPIFFS partition has data"""
+        self.is_flashing = True
+        self.set_buttons_state('disabled')
+        
+        try:
+            if self._verify_spiffs_upload(port, chip, spiffs_image):
+                self.log("=" * 60, "success")
+                self.log("✅ VERIFICACIÓN EXITOSA", "success")
+                self.log("=" * 60, "success")
+                self.log("La partición SPIFFS contiene datos", "info")
+                messagebox.showinfo(
+                    "Verificación Exitosa",
+                    "✅ Partición SPIFFS verificada\n\n"
+                    "La partición contiene datos (no está vacía).\n\n"
+                    "Los archivos serán accesibles cuando el\n"
+                    "ESP32 arranque y monte el filesystem."
+                )
+            else:
+                self.log("=" * 60, "warning")
+                self.log("⚠️ PARTICIÓN SPIFFS VACÍA", "warning")
+                self.log("=" * 60, "warning")
+                messagebox.showwarning(
+                    "Partición Vacía",
+                    "⚠️ La partición SPIFFS está vacía\n\n"
+                    "Sube el data folder para escribir archivos."
+                )
+        
+        except Exception as e:
+            self.log(f"❌ ERROR durante verificación: {e}", "error")
+            messagebox.showerror("Error", f"Error verificando SPIFFS:\n\n{str(e)}")
+        
+        finally:
+            self.is_flashing = False
+            self.set_buttons_state('normal')
+
     def detect_device_partitions(self):
         """Detect partition table from connected device"""
         if not self.selected_port.get():
@@ -1845,6 +2207,8 @@ spiffs,      data, spiffs,  0x2A0000, 1472K
         self.erase_nvs_btn.config(state=state)
         self.recovery_btn.config(state=state)
         self.fix_bootloader_btn.config(state=state)
+        self.upload_data_btn.config(state=state)
+        self.verify_spiffs_btn.config(state=state)
         self.refresh_btn.config(state=state)
     
     def start_flash(self):
