@@ -115,9 +115,9 @@ class ESP32Flasher:
     def __init__(self, root):
         self.root = root
         self.root.title("ESP32 Firmware Flasher")
-        self.root.geometry("1100x850")  # Wider for debug panels
+        self.root.geometry("1100x800")  # Increased height for better layout
         self.root.resizable(True, True)  # Permitir redimensionar
-        self.root.minsize(900, 500)  # Wider minimum size
+        self.root.minsize(900, 700)  # Increased minimum height
         
         # Variables
         self.firmware_path = None
@@ -129,6 +129,7 @@ class ESP32Flasher:
         self.flash_mode = tk.StringVar(value="simple")  # "simple" or "complete"
         self.is_flashing = False
         self.verbose_mode = tk.BooleanVar(value=False)
+        self.show_advanced = tk.BooleanVar(value=False)  # Track advanced panel visibility
         
         # Session tracking
         self.total_flashes = 0
@@ -156,43 +157,81 @@ class ESP32Flasher:
         self.refresh_ports()
     
     def setup_ui(self):
-        # Configurar el root para que se expanda
-        self.root.columnconfigure(0, weight=2)
-        self.root.columnconfigure(1, weight=1)
-        self.root.rowconfigure(0, weight=1)
+        # Main container with flex layout
+        main_container = ttk.Frame(self.root)
+        main_container.pack(fill='both', expand=True, padx=5, pady=5)
         
-        # Frame izquierdo (controles principales)
-        left_frame = ttk.Frame(self.root, padding="10")
-        left_frame.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
+        # Configure main container grid
+        main_container.columnconfigure(0, weight=3)  # Left panel gets more space
+        main_container.columnconfigure(1, weight=1)  # Right panel (debug)
+        main_container.rowconfigure(0, weight=1)
         
-        # Frame derecho (debug y monitoring)
-        right_frame = ttk.Frame(self.root, padding="10")
+        # === LEFT PANEL WITH SCROLLBAR ===
+        left_frame_container = ttk.Frame(main_container)
+        left_frame_container.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S), padx=(0, 2))
+        left_frame_container.columnconfigure(0, weight=1)
+        left_frame_container.rowconfigure(0, weight=1)
+        
+        # Create canvas and scrollbar for left panel
+        canvas = tk.Canvas(left_frame_container, highlightthickness=0)
+        scrollbar = ttk.Scrollbar(left_frame_container, orient="vertical", command=canvas.yview)
+        self.scrollable_frame = ttk.Frame(canvas)
+        
+        # Configure scrolling
+        self.scrollable_frame.bind(
+            "<Configure>",
+            lambda e: canvas.configure(scrollregion=canvas.bbox("all"))
+        )
+        
+        canvas.create_window((0, 0), window=self.scrollable_frame, anchor="nw")
+        canvas.configure(yscrollcommand=scrollbar.set)
+        
+        # Grid canvas and scrollbar
+        canvas.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
+        scrollbar.grid(row=0, column=1, sticky=(tk.N, tk.S))
+        
+        # Bind mousewheel to canvas
+        def _on_mousewheel(event):
+            canvas.yview_scroll(int(-1*(event.delta/120)), "units")
+        canvas.bind("<MouseWheel>", _on_mousewheel)
+        
+        # Configure scrollable frame
+        self.scrollable_frame.columnconfigure(0, weight=1)
+        
+        # === RIGHT PANEL (Debug) ===
+        right_frame = ttk.Frame(main_container)
         right_frame.grid(row=0, column=1, sticky=(tk.W, tk.E, tk.N, tk.S))
         
-        # Configurar left_frame
-        left_frame.columnconfigure(0, weight=1)
-        left_frame.columnconfigure(1, weight=1) 
-        left_frame.columnconfigure(2, weight=1)
-        left_frame.rowconfigure(12, weight=1)  # Fila del log se expande
+        # Setup main content in scrollable frame
+        self.setup_main_content(self.scrollable_frame)
         
-        # Configurar right_frame
-        right_frame.columnconfigure(0, weight=1)
-        right_frame.rowconfigure(0, weight=1)  # Debug
-        right_frame.rowconfigure(1, weight=1)  # Serial
-        right_frame.rowconfigure(2, weight=0)  # Session (fixed size)
+        # Setup debug panel
+        self.setup_debug_panel(right_frame)
         
-        main_frame = left_frame  # Alias for compatibility
+        # Update canvas scroll region when window resizes
+        def update_scroll_region():
+            canvas.update_idletasks()
+            canvas.configure(scrollregion=canvas.bbox("all"))
+        
+        self.root.after(100, update_scroll_region)
+    
+    def setup_main_content(self, parent):
+        """Setup the main content in the scrollable left panel"""
+        # Configure parent for expansion
+        parent.columnconfigure(0, weight=1)  # Main column expands
+        parent.rowconfigure(9, weight=1)  # Log area expands
+        
+        main_frame = parent  # Alias for compatibility with existing code
         
         # Título
         title_label = ttk.Label(main_frame, text="ESP32 Firmware Flasher", 
                                font=('Arial', 16, 'bold'))
-        title_label.grid(row=0, column=0, columnspan=3, pady=10)
+        title_label.grid(row=0, column=0, pady=10, sticky=(tk.W, tk.E))
         
         # === FLASH MODE SELECTION ===
-        mode_frame = ttk.LabelFrame(main_frame, text="Modo de Flasheo", padding="10")
-        mode_frame.grid(row=1, column=0, columnspan=3, sticky=(tk.W, tk.E), pady=10)
+        mode_frame = ttk.LabelFrame(main_frame, text="Modo de Flasheo", padding="5")
+        mode_frame.grid(row=1, column=0, sticky=(tk.W, tk.E), pady=3, padx=5)
         mode_frame.columnconfigure(0, weight=1)
-        mode_frame.columnconfigure(1, weight=0)
         
         ttk.Radiobutton(mode_frame, text="Simple Mode - Solo firmware.bin", 
                        variable=self.flash_mode, value="simple",
@@ -206,184 +245,208 @@ class ESP32Flasher:
         ttk.Label(mode_frame, text="   🔧 COMPLETO: Flasheo total como PlatformIO (para chips nuevos o recuperación)", 
                  foreground="orange", font=('Arial', 8, 'bold')).grid(row=3, column=0, sticky=tk.W, padx=20)
         
-        # Analyze button in mode frame
-        self.analyze_btn = ttk.Button(mode_frame, text="🔍 Analizar\nFirmware", 
-                                     command=self.show_firmware_analysis, width=12)
-        self.analyze_btn.grid(row=0, column=1, rowspan=4, padx=(20, 0), sticky=(tk.N, tk.S))
+        # Info and Analyze buttons
+        button_frame = ttk.Frame(mode_frame)
+        button_frame.grid(row=0, column=1, rowspan=4, padx=(20, 0), sticky=(tk.N, tk.S))
+        
+        info_btn = ttk.Button(button_frame, text="ℹ️ Info\nModos", 
+                             command=self.show_mode_info, width=15)
+        info_btn.pack(pady=2)
+        
+        self.analyze_btn = ttk.Button(button_frame, text="🔍 Analizar\nFirmware", 
+                                     command=self.show_firmware_analysis, width=15)
+        self.analyze_btn.pack(pady=2)
         
         # === FILE SELECTION ===
-        files_frame = ttk.LabelFrame(main_frame, text="Archivos", padding="10")
-        files_frame.grid(row=2, column=0, columnspan=3, sticky=(tk.W, tk.E), pady=10)
+        files_frame = ttk.LabelFrame(main_frame, text="Archivos", padding="5")
+        files_frame.grid(row=2, column=0, sticky=(tk.W, tk.E), pady=3, padx=5)
         files_frame.columnconfigure(1, weight=1)
         
         # Firmware file
         ttk.Label(files_frame, text="Firmware:", font=('Arial', 9, 'bold')).grid(row=0, column=0, sticky=tk.W, pady=5)
         self.firmware_label = ttk.Label(files_frame, text="No seleccionado", foreground="gray")
         self.firmware_label.grid(row=0, column=1, sticky=tk.W, padx=5)
-        self.firmware_btn = ttk.Button(files_frame, text="📁 Seleccionar", command=self.select_firmware_file, width=15)
-        self.firmware_btn.grid(row=0, column=2, padx=5)
+        self.firmware_btn = ttk.Button(files_frame, text="📁", command=self.select_firmware_file, width=5)
+        self.firmware_btn.grid(row=0, column=2, padx=2)
         
         # Bootloader file (Complete mode only)
         ttk.Label(files_frame, text="Bootloader:", font=('Arial', 9, 'bold')).grid(row=1, column=0, sticky=tk.W, pady=5)
         self.bootloader_label = ttk.Label(files_frame, text="No requerido (Simple Mode)", foreground="gray")
         self.bootloader_label.grid(row=1, column=1, sticky=tk.W, padx=5)
-        self.bootloader_btn = ttk.Button(files_frame, text="📁 Seleccionar", command=self.select_bootloader_file, width=15, state='disabled')
-        self.bootloader_btn.grid(row=1, column=2, padx=5)
+        self.bootloader_btn = ttk.Button(files_frame, text="📁", command=self.select_bootloader_file, width=5, state='disabled')
+        self.bootloader_btn.grid(row=1, column=2, padx=2)
         
         # Partitions file (Complete mode only)
         ttk.Label(files_frame, text="Partitions:", font=('Arial', 9, 'bold')).grid(row=2, column=0, sticky=tk.W, pady=5)
         self.partitions_label = ttk.Label(files_frame, text="No requerido (Simple Mode)", foreground="gray")
         self.partitions_label.grid(row=2, column=1, sticky=tk.W, padx=5)
-        self.partitions_btn = ttk.Button(files_frame, text="📁 Seleccionar", command=self.select_partitions_file, width=15, state='disabled')
-        self.partitions_btn.grid(row=2, column=2, padx=5)
+        self.partitions_btn = ttk.Button(files_frame, text="📁", command=self.select_partitions_file, width=5, state='disabled')
+        self.partitions_btn.grid(row=2, column=2, padx=2)
         
         # Auto-detect button
         self.auto_detect_btn = ttk.Button(files_frame, text="🔍 Auto-detectar archivos PlatformIO", 
-                                         command=self.auto_detect_pio_files, width=30, state='disabled')
-        self.auto_detect_btn.grid(row=3, column=0, columnspan=3, pady=10)
+                                         command=self.auto_detect_pio_files, width=50, state='disabled')
+        self.auto_detect_btn.grid(row=3, column=0, columnspan=3, pady=5, sticky=(tk.W, tk.E))
         
         # === DEVICE CONFIGURATION ===
-        device_frame = ttk.LabelFrame(main_frame, text="Configuración del Dispositivo", padding="10")
-        device_frame.grid(row=3, column=0, columnspan=3, sticky=(tk.W, tk.E), pady=10)
+        device_frame = ttk.LabelFrame(main_frame, text="Configuración del Dispositivo", padding="5")
+        device_frame.grid(row=3, column=0, sticky=(tk.W, tk.E), pady=3, padx=5)
         device_frame.columnconfigure(1, weight=1)
         
         # Puerto COM
-        ttk.Label(device_frame, text="Puerto COM:", font=('Arial', 9, 'bold')).grid(row=0, column=0, sticky=tk.W, pady=5, padx=(0, 10))
-        
-        self.port_combo = ttk.Combobox(device_frame, textvariable=self.selected_port, 
-                                       state="readonly", width=30)
+        ttk.Label(device_frame, text="Puerto COM:", font=('Arial', 9, 'bold')).grid(row=0, column=0, sticky=tk.W, pady=5)
+        self.port_combo = ttk.Combobox(device_frame, textvariable=self.selected_port, state="readonly", width=30)
         self.port_combo.grid(row=0, column=1, sticky=(tk.W, tk.E), padx=5)
         
-        self.refresh_btn = ttk.Button(device_frame, text="🔄 Actualizar", 
-                                     command=self.refresh_ports, width=12)
-        self.refresh_btn.grid(row=0, column=2, padx=5)
+        port_buttons_frame = ttk.Frame(device_frame)
+        port_buttons_frame.grid(row=0, column=2, padx=5)
         
-        # Detect button
-        self.detect_btn = ttk.Button(device_frame, text="🔍 Detectar Particiones", 
-                                     command=self.detect_device_partitions, width=20)
-        self.detect_btn.grid(row=0, column=3, padx=5)
+        self.refresh_btn = ttk.Button(port_buttons_frame, text="🔄", command=self.refresh_ports, width=5)
+        self.refresh_btn.pack(side=tk.LEFT, padx=2)
+        
+        self.detect_btn = ttk.Button(port_buttons_frame, text="🔍", command=self.detect_device_partitions, width=5)
+        self.detect_btn.pack(side=tk.LEFT, padx=2)
         
         # Tipo de chip
-        ttk.Label(device_frame, text="Tipo de Chip:", font=('Arial', 9, 'bold')).grid(row=1, column=0, sticky=tk.W, pady=5, padx=(0, 10))
-        
-        self.chip_combo = ttk.Combobox(device_frame, textvariable=self.selected_chip, 
-                                      state="readonly", width=15)
+        ttk.Label(device_frame, text="Chip:", font=('Arial', 9, 'bold')).grid(row=1, column=0, sticky=tk.W, pady=5)
+        self.chip_combo = ttk.Combobox(device_frame, textvariable=self.selected_chip, state="readonly", width=20)
         self.chip_combo['values'] = ['esp32', 'esp32s3', 'esp32s2', 'esp32c3', 'esp32c6', 'esp32h2']
-        self.chip_combo.grid(row=1, column=1, sticky=tk.W, padx=5)
+        self.chip_combo.grid(row=1, column=1, sticky=(tk.W, tk.E), padx=5)
         
-        # Chip Info button
-        chip_info_btn = ttk.Button(device_frame, text="🔍 Chip Info", 
-                                   command=self.show_chip_info, width=15)
+        chip_info_btn = ttk.Button(device_frame, text="🔍 Info", command=self.show_chip_info, width=10)
         chip_info_btn.grid(row=1, column=2, padx=5)
         
         # Baud rate
-        ttk.Label(device_frame, text="Baud Rate:", font=('Arial', 9, 'bold')).grid(row=2, column=0, sticky=tk.W, pady=5, padx=(0, 10))
-        
-        self.baud_combo = ttk.Combobox(device_frame, textvariable=self.selected_baud, 
-                                      state="readonly", width=15)
+        ttk.Label(device_frame, text="Baud Rate:", font=('Arial', 9, 'bold')).grid(row=2, column=0, sticky=tk.W, pady=5)
+        self.baud_combo = ttk.Combobox(device_frame, textvariable=self.selected_baud, state="readonly", width=20)
         self.baud_combo['values'] = ['115200', '230400', '460800', '921600']
-        self.baud_combo.grid(row=2, column=1, sticky=tk.W, padx=5)
-        
-        ttk.Label(device_frame, text="(460800 recomendado - más rápido y confiable)", 
-                 foreground="gray", font=('Arial', 8)).grid(row=2, column=2, columnspan=2, sticky=tk.W)
+        self.baud_combo.grid(row=2, column=1, sticky=(tk.W, tk.E), padx=5)
         
         # === OPTIONS ===
-        options_frame = ttk.LabelFrame(main_frame, text="Opciones", padding="10")
-        options_frame.grid(row=4, column=0, columnspan=3, sticky=(tk.W, tk.E), pady=10)
+        options_frame = ttk.LabelFrame(main_frame, text="Opciones", padding="5")
+        options_frame.grid(row=4, column=0, sticky=(tk.W, tk.E), pady=3, padx=5)
         options_frame.columnconfigure(0, weight=1)
-        
-        self.verify_flash = tk.BooleanVar(value=True)
-        verify_cb = ttk.Checkbutton(options_frame, text="✓ Verificar escritura después de flashear (siempre activo en esptool v5+)", 
-                       variable=self.verify_flash, state='disabled')
-        verify_cb.grid(row=0, column=0, sticky=tk.W, pady=2)
         
         # Preserve NVS with info button
         nvs_frame = ttk.Frame(options_frame)
-        nvs_frame.grid(row=1, column=0, sticky=tk.W, pady=2)
+        nvs_frame.grid(row=0, column=0, sticky=(tk.W, tk.E), pady=2)
+        nvs_frame.columnconfigure(0, weight=1)
         
         self.preserve_nvs = tk.BooleanVar(value=False)
         ttk.Checkbutton(nvs_frame, text="🔒 Preservar NVS/WiFi (solo Complete Mode)", 
-                       variable=self.preserve_nvs).pack(side=tk.LEFT)
+                       variable=self.preserve_nvs).grid(row=0, column=0, sticky=tk.W)
         
         info_btn = ttk.Button(nvs_frame, text="ℹ️", width=3, command=self.show_mode_info)
-        info_btn.pack(side=tk.LEFT, padx=5)
+        info_btn.grid(row=0, column=1, sticky=tk.E, padx=(5, 0))
         
-        # Preserve Bootloader checkbox
+        # Preserve Bootloader
         self.preserve_bootloader = tk.BooleanVar(value=False)
-        ttk.Checkbutton(options_frame, text="🚫 Preservar Bootloader (solo Complete Mode - útil para actualizar solo partitions+firmware)", 
-                       variable=self.preserve_bootloader).grid(row=2, column=0, sticky=tk.W, pady=2)
+        ttk.Checkbutton(options_frame, text="🚫 Preservar Bootloader (solo Complete Mode)", 
+                       variable=self.preserve_bootloader).grid(row=1, column=0, sticky=tk.W, pady=2)
         
-        # === ACTION BUTTONS ===
-        buttons_frame = ttk.Frame(main_frame)
-        buttons_frame.grid(row=5, column=0, columnspan=3, pady=20)
+        # Verbose mode
+        ttk.Checkbutton(options_frame, text="Modo Verbose (debug detallado)", 
+                       variable=self.verbose_mode).grid(row=2, column=0, sticky=tk.W, pady=2)
         
-        self.erase_btn = ttk.Button(buttons_frame, text="🗑️ BORRAR TODO", 
-                                   command=self.start_erase, width=18)
-        self.erase_btn.pack(side=tk.LEFT, padx=5)
+        # === MAIN ACTION BUTTONS ===
+        main_buttons_frame = ttk.Frame(main_frame)
+        main_buttons_frame.grid(row=5, column=0, pady=5, sticky=(tk.W, tk.E))
+        main_buttons_frame.columnconfigure(0, weight=1)
+        main_buttons_frame.columnconfigure(1, weight=1)
         
-        self.erase_nvs_btn = ttk.Button(buttons_frame, text="🗑️ BORRAR NVS", 
-                                       command=self.start_erase_nvs, width=18)
-        self.erase_nvs_btn.pack(side=tk.LEFT, padx=5)
+        self.flash_btn = ttk.Button(main_buttons_frame, text="⚡ FLASHEAR FIRMWARE", 
+                                   command=self.start_flash, width=30)
+        self.flash_btn.grid(row=0, column=0, padx=5, sticky=(tk.W, tk.E))
         
-        self.recovery_btn = ttk.Button(buttons_frame, text="🔧 Flash Bootloader Solo", 
-                                      command=self.flash_bootloader_only, width=22)
-        self.recovery_btn.pack(side=tk.LEFT, padx=5)
+        # Advanced options toggle
+        self.advanced_btn = ttk.Button(main_buttons_frame, text="⚙️ Opciones Avanzadas", 
+                                      command=self.toggle_advanced_options, width=25)
+        self.advanced_btn.grid(row=0, column=1, padx=5, sticky=(tk.W, tk.E))
         
-        self.fix_bootloader_btn = ttk.Button(buttons_frame, text="🚑 Fix Invalid Header", 
-                                           command=self.fix_invalid_header, width=20)
-        self.fix_bootloader_btn.pack(side=tk.LEFT, padx=5)
+        # === ADVANCED OPTIONS PANEL (Initially hidden) ===
+        self.advanced_frame = ttk.LabelFrame(main_frame, text="Opciones Avanzadas", padding="10")
+        # Don't grid it initially - will be shown/hidden by toggle
         
-        self.flash_btn = ttk.Button(buttons_frame, text="⚡ FLASHEAR FIRMWARE", 
-                                   command=self.start_flash, style='Accent.TButton', width=22)
-        self.flash_btn.pack(side=tk.LEFT, padx=5)
+        advanced_buttons_frame = ttk.Frame(self.advanced_frame)
+        advanced_buttons_frame.pack(fill=tk.X, pady=5)
+        
+        # Configure grid weights for equal distribution
+        for i in range(4):
+            advanced_buttons_frame.columnconfigure(i, weight=1)
+        
+        self.erase_btn = ttk.Button(advanced_buttons_frame, text="🗑️ BORRAR TODO", 
+                                   command=self.start_erase, width=15)
+        self.erase_btn.grid(row=0, column=0, padx=2, sticky=(tk.W, tk.E))
+        
+        self.erase_nvs_btn = ttk.Button(advanced_buttons_frame, text="🗑️ BORRAR NVS", 
+                                       command=self.start_erase_nvs, width=15)
+        self.erase_nvs_btn.grid(row=0, column=1, padx=2, sticky=(tk.W, tk.E))
+        
+        self.recovery_btn = ttk.Button(advanced_buttons_frame, text="🔧 Flash Bootloader", 
+                                      command=self.flash_bootloader_only, width=15)
+        self.recovery_btn.grid(row=0, column=2, padx=2, sticky=(tk.W, tk.E))
+        
+        self.fix_bootloader_btn = ttk.Button(advanced_buttons_frame, text="🚑 Fix Header", 
+                                           command=self.fix_invalid_header, width=12)
+        self.fix_bootloader_btn.grid(row=0, column=3, padx=2, sticky=(tk.W, tk.E))
         
         # === PROGRESS BAR ===
-        self.progress = ttk.Progressbar(main_frame, mode='indeterminate', length=500)
-        self.progress.grid(row=6, column=0, columnspan=3, pady=10, sticky=(tk.W, tk.E))
+        self.progress = ttk.Progressbar(main_frame, mode='indeterminate')
+        self.progress.grid(row=7, column=0, pady=10, sticky=(tk.W, tk.E), padx=5)
         
         # === LOG AREA ===
         log_header_frame = ttk.Frame(main_frame)
-        log_header_frame.grid(row=7, column=0, columnspan=3, sticky=(tk.W, tk.E), pady=(10, 5))
+        log_header_frame.grid(row=8, column=0, sticky=(tk.W, tk.E), pady=(10, 5), padx=5)
+        log_header_frame.columnconfigure(0, weight=1)
         
         ttk.Label(log_header_frame, text="Log de Proceso:", 
                  font=('Arial', 10, 'bold')).pack(side=tk.LEFT)
         
-        save_log_btn = ttk.Button(log_header_frame, text="💾 Guardar Log", 
-                                  command=self.save_log_to_file, width=12)
-        save_log_btn.pack(side=tk.RIGHT, padx=5)
+        save_log_btn = ttk.Button(log_header_frame, text="💾", command=self.save_log_to_file, width=5)
+        save_log_btn.pack(side=tk.RIGHT)
         
-        self.log_text = scrolledtext.ScrolledText(main_frame, height=10, width=70, 
-                                                  state='disabled', wrap=tk.WORD)
-        self.log_text.grid(row=8, column=0, columnspan=3, pady=5, sticky=(tk.W, tk.E, tk.N, tk.S))
+        self.log_text = scrolledtext.ScrolledText(main_frame, height=12, wrap=tk.WORD, state='disabled')
+        self.log_text.grid(row=9, column=0, pady=5, sticky=(tk.W, tk.E, tk.N, tk.S), padx=5)
         
-        # Configurar tags para colores
+        # Configure log colors
         self.log_text.tag_config("success", foreground="green")
         self.log_text.tag_config("error", foreground="red")
         self.log_text.tag_config("info", foreground="blue")
         self.log_text.tag_config("warning", foreground="orange")
+    
+    def toggle_advanced_options(self):
+        """Toggle visibility of advanced options panel"""
+        if self.show_advanced.get():
+            # Hide advanced panel
+            self.advanced_frame.grid_remove()
+            self.advanced_btn.config(text="⚙️ Opciones Avanzadas")
+            self.show_advanced.set(False)
+        else:
+            # Show advanced panel
+            self.advanced_frame.grid(row=6, column=0, sticky=(tk.W, tk.E), pady=5, padx=5)
+            self.advanced_btn.config(text="❌ Ocultar Avanzadas")
+            self.show_advanced.set(True)
         
-        # Verbose mode checkbox
-        ttk.Checkbutton(main_frame, text="Modo Verbose (debug detallado)", 
-                       variable=self.verbose_mode).grid(row=9, column=0, columnspan=3, sticky=tk.W, pady=5)
-        
-        # === RIGHT PANEL - DEBUG & MONITORING ===
-        self.setup_debug_panel(right_frame)
+        # Update scroll region after layout change
+        self.root.after(10, lambda: self.root.update_idletasks())
     
     def setup_debug_panel(self, parent):
         """Setup the right panel with debug, serial, and session info"""
+        parent.columnconfigure(0, weight=1)
+        parent.rowconfigure(0, weight=1)
+        parent.rowconfigure(1, weight=1)
+        parent.rowconfigure(2, weight=0)
+        
         # === DEBUG MESSAGES ===
         debug_label_frame = ttk.Frame(parent)
         debug_label_frame.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S), pady=(0, 5))
         debug_label_frame.columnconfigure(0, weight=1)
         
-        ttk.Label(debug_label_frame, text="Mensajes de Debug:", 
-                 font=('Arial', 10, 'bold')).pack(side=tk.LEFT)
-        ttk.Button(debug_label_frame, text="🗑️ Limpiar", 
-                  command=lambda: self.clear_text(self.debug_text), width=10).pack(side=tk.RIGHT)
+        ttk.Label(debug_label_frame, text="Debug:", font=('Arial', 10, 'bold')).pack(side=tk.LEFT)
+        ttk.Button(debug_label_frame, text="🗑️", command=lambda: self.clear_text(self.debug_text), width=5).pack(side=tk.RIGHT)
         
-        self.debug_text = scrolledtext.ScrolledText(parent, height=12, width=40, 
-                                                     state='disabled', wrap=tk.WORD,
-                                                     font=('Consolas', 8))
+        self.debug_text = scrolledtext.ScrolledText(parent, height=10, width=40, state='disabled', 
+                                                     wrap=tk.WORD, font=('Consolas', 8))
         self.debug_text.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S), pady=(25, 5))
         self.debug_text.tag_config("debug", foreground="gray")
         self.debug_text.tag_config("verbose", foreground="#666666")
@@ -393,47 +456,40 @@ class ESP32Flasher:
         serial_label_frame.grid(row=1, column=0, sticky=(tk.W, tk.E, tk.N, tk.S), pady=(0, 5))
         serial_label_frame.columnconfigure(0, weight=1)
         
-        ttk.Label(serial_label_frame, text="Monitor Serial (TX/RX):", 
-                 font=('Arial', 10, 'bold')).pack(side=tk.LEFT)
-        ttk.Button(serial_label_frame, text="🗑️ Limpiar", 
-                  command=lambda: self.clear_text(self.serial_text), width=10).pack(side=tk.RIGHT)
+        ttk.Label(serial_label_frame, text="Serial:", font=('Arial', 10, 'bold')).pack(side=tk.LEFT)
+        ttk.Button(serial_label_frame, text="🗑️", command=lambda: self.clear_text(self.serial_text), width=5).pack(side=tk.RIGHT)
         
-        self.serial_text = scrolledtext.ScrolledText(parent, height=12, width=40, 
-                                                      state='disabled', wrap=tk.WORD,
-                                                      font=('Consolas', 8))
+        self.serial_text = scrolledtext.ScrolledText(parent, height=10, width=40, state='disabled', 
+                                                      wrap=tk.WORD, font=('Consolas', 8))
         self.serial_text.grid(row=1, column=0, sticky=(tk.W, tk.E, tk.N, tk.S), pady=(25, 5))
         self.serial_text.tag_config("tx", foreground="blue")
         self.serial_text.tag_config("rx", foreground="green")
         
         # === SESSION INFO ===
-        session_frame = ttk.LabelFrame(parent, text="Información de Sesión", padding="10")
+        session_frame = ttk.LabelFrame(parent, text="Sesión", padding="5")
         session_frame.grid(row=2, column=0, sticky=(tk.W, tk.E), pady=5)
-        session_frame.columnconfigure(0, weight=1)
         session_frame.columnconfigure(1, weight=1)
         
-        # Stats labels
-        ttk.Label(session_frame, text="Total Flasheos:", font=('Arial', 9, 'bold')).grid(row=0, column=0, sticky=tk.W)
-        self.total_flashes_label = ttk.Label(session_frame, text="0", foreground="blue")
+        # Stats
+        ttk.Label(session_frame, text="Total:", font=('Arial', 8)).grid(row=0, column=0, sticky=tk.W)
+        self.total_flashes_label = ttk.Label(session_frame, text="0", foreground="blue", font=('Arial', 8))
         self.total_flashes_label.grid(row=0, column=1, sticky=tk.W)
         
-        ttk.Label(session_frame, text="Exitosos:", font=('Arial', 9, 'bold')).grid(row=1, column=0, sticky=tk.W)
-        self.successful_flashes_label = ttk.Label(session_frame, text="0", foreground="green")
+        ttk.Label(session_frame, text="Exitosos:", font=('Arial', 8)).grid(row=1, column=0, sticky=tk.W)
+        self.successful_flashes_label = ttk.Label(session_frame, text="0", foreground="green", font=('Arial', 8))
         self.successful_flashes_label.grid(row=1, column=1, sticky=tk.W)
         
-        ttk.Label(session_frame, text="Dispositivos únicos:", font=('Arial', 9, 'bold')).grid(row=2, column=0, sticky=tk.W)
-        self.unique_devices_label = ttk.Label(session_frame, text="0", foreground="purple")
+        ttk.Label(session_frame, text="Únicos:", font=('Arial', 8)).grid(row=2, column=0, sticky=tk.W)
+        self.unique_devices_label = ttk.Label(session_frame, text="0", foreground="purple", font=('Arial', 8))
         self.unique_devices_label.grid(row=2, column=1, sticky=tk.W)
         
-        # MAC addresses text
-        ttk.Label(session_frame, text="MACs Flasheadas:", font=('Arial', 9, 'bold')).grid(row=3, column=0, columnspan=2, sticky=tk.W, pady=(5, 0))
-        self.mac_text = scrolledtext.ScrolledText(session_frame, height=4, width=35, 
-                                                   state='disabled', wrap=tk.WORD,
-                                                   font=('Consolas', 8))
-        self.mac_text.grid(row=4, column=0, columnspan=2, sticky=(tk.W, tk.E), pady=2)
+        # MAC addresses
+        self.mac_text = scrolledtext.ScrolledText(session_frame, height=4, width=35, state='disabled', 
+                                                   wrap=tk.WORD, font=('Consolas', 7))
+        self.mac_text.grid(row=3, column=0, columnspan=2, sticky=(tk.W, tk.E), pady=2)
         
         # Reset button
-        ttk.Button(session_frame, text="🔄 Reset Estadísticas", 
-                  command=self.reset_session_stats, width=20).grid(row=5, column=0, columnspan=2, pady=(5, 0))
+        ttk.Button(session_frame, text="🔄", command=self.reset_session_stats, width=5).grid(row=4, column=0, columnspan=2, pady=2)
     
     def clear_text(self, text_widget):
         """Clear a text widget"""
