@@ -309,7 +309,7 @@ class ESP32Flasher:
         info_btn.pack(side=tk.LEFT, padx=5)
         
         # Preserve Bootloader checkbox
-        self.preserve_bootloader = tk.BooleanVar(value=True)
+        self.preserve_bootloader = tk.BooleanVar(value=False)
         ttk.Checkbutton(options_frame, text="🚫 Preservar Bootloader (solo Complete Mode - útil para actualizar solo partitions+firmware)", 
                        variable=self.preserve_bootloader).grid(row=2, column=0, sticky=tk.W, pady=2)
         
