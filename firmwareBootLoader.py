@@ -135,13 +135,15 @@ class ESP32Flasher:
         self.successful_flashes = 0
         self.flashed_devices = set()  # Store unique MAC addresses
         
-        # ESP-IDF standard addresses
+        # ESP-IDF standard addresses (base - adjusted per chip)
         self.esp_idf_addresses = {
-            "bootloader": "0x1000",      # 2nd stage bootloader
-            "partition_table": "0x8000", # Partition table
-            "ota_data": "0x49000",       # OTA data selector
-            "app_no_ota": "0x10000",     # App without OTA
-            "app_with_ota": "0x50000"    # App with OTA (typical)
+            "bootloader_esp32s3": "0x0",       # ESP32-S3 bootloader at 0x0
+            "bootloader_esp32": "0x1000",     # ESP32 bootloader at 0x1000
+            "partition_table_esp32s3": "0x9000",  # ESP32-S3 partition table (larger bootloader space)
+            "partition_table_esp32": "0x8000",   # ESP32 partition table
+            "ota_data": "0x49000",            # OTA data selector
+            "app_no_ota": "0x10000",          # App without OTA
+            "app_with_ota": "0x50000"         # App with OTA (typical)
         }
         
         # Configurar interfaz
@@ -322,6 +324,10 @@ class ESP32Flasher:
         self.erase_nvs_btn = ttk.Button(buttons_frame, text="🗑️ BORRAR NVS", 
                                        command=self.start_erase_nvs, width=18)
         self.erase_nvs_btn.pack(side=tk.LEFT, padx=5)
+        
+        self.recovery_btn = ttk.Button(buttons_frame, text="🔧 Flash Bootloader Solo", 
+                                      command=self.flash_bootloader_only, width=22)
+        self.recovery_btn.pack(side=tk.LEFT, padx=5)
         
         self.flash_btn = ttk.Button(buttons_frame, text="⚡ FLASHEAR FIRMWARE", 
                                    command=self.start_flash, style='Accent.TButton', width=22)
@@ -971,6 +977,140 @@ class ESP32Flasher:
             self.log(f"Error en show_chip_info: {e}", "error")
             self.log_debug(f"Exception: {repr(e)}")
 
+    def flash_bootloader_only(self):
+        """Flash only the bootloader - useful for recovery from invalid header errors"""
+        if self.is_flashing:
+            messagebox.showwarning("Ocupado", "Ya hay un flasheo en progreso")
+            return
+        
+        if not self.selected_port.get():
+            messagebox.showerror("Error", "Selecciona un puerto COM primero")
+            return
+        
+        if not self.bootloader_path or not os.path.exists(self.bootloader_path):
+            messagebox.showerror("Error", 
+                "No se encontró el bootloader.\n\n"
+                "Verifica que el archivo bootloader.bin exista en la carpeta firmware/")
+            return
+        
+        # Confirm action
+        port = self.selected_port.get().split(' - ')[0]
+        chip = self.selected_chip.get()
+        bootloader_addr = self.get_bootloader_address()
+        
+        confirm = messagebox.askyesno(
+            "Confirmar Flash de Bootloader",
+            f"🔧 MODO DE RECUPERACIÓN\n\n"
+            f"Se flasheará SOLO el bootloader en:\n"
+            f"• Puerto: {port}\n"
+            f"• Chip: {chip}\n"
+            f"• Dirección: {bootloader_addr}\n"
+            f"• Archivo: {os.path.basename(self.bootloader_path)}\n\n"
+            f"Esta operación puede recuperar chips con 'invalid header' error.\n\n"
+            f"¿Continuar?"
+        )
+        
+        if not confirm:
+            self.log("Flash de bootloader cancelado por el usuario", "info")
+            return
+        
+        self.log("=" * 60, "info")
+        self.log("🔧 INICIANDO FLASH DE BOOTLOADER SOLO (RECOVERY MODE)", "info")
+        self.log("=" * 60, "info")
+        self.log(f"Puerto: {port}", "info")
+        self.log(f"Chip: {chip}", "info")
+        self.log(f"Bootloader: {bootloader_addr} → {os.path.basename(self.bootloader_path)}", "info")
+        
+        # Start flashing in thread
+        thread = threading.Thread(
+            target=self._flash_bootloader_only_thread,
+            args=(port, chip, bootloader_addr)
+        )
+        thread.daemon = True
+        thread.start()
+    
+    def _flash_bootloader_only_thread(self, port, chip, bootloader_addr):
+        """Thread to flash only bootloader"""
+        self.is_flashing = True
+        self.set_buttons_state('disabled')
+        
+        try:
+            # Get Python executable path
+            python_exe = sys.executable
+            self.log_debug(f"Python executable: {python_exe}")
+            
+            # Build esptool command
+            cmd = [
+                python_exe, "-m", "esptool",
+                "--chip", chip,
+                "--port", port,
+                "--baud", str(self.selected_baud.get()),
+                "--before", "default_reset",
+                "--after", "hard_reset",
+                "write-flash",
+                "-z",  # Compress
+                "--flash_mode", "dio",
+                "--flash_freq", "80m",
+                "--flash_size", "detect",
+                bootloader_addr, self.bootloader_path
+            ]
+            
+            self.log_debug(f"Comando esptool: {' '.join(cmd)}")
+            self.log("Flasheando bootloader...", "info")
+            
+            # Execute command
+            process = subprocess.Popen(
+                cmd,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                text=True,
+                bufsize=1
+            )
+            
+            # Read output line by line
+            for line in iter(process.stdout.readline, ''):
+                if line:
+                    line = line.strip()
+                    self.log_debug(f"esptool: {line}")
+                    
+                    # Show progress
+                    if "Writing at" in line or "Wrote" in line or "Hash of data verified" in line:
+                        self.log(line, "info")
+            
+            process.wait()
+            
+            if process.returncode == 0:
+                self.log("=" * 60, "success")
+                self.log("✅ BOOTLOADER FLASHEADO CORRECTAMENTE", "success")
+                self.log("=" * 60, "success")
+                self.log("El chip debería reiniciarse automáticamente", "info")
+                self.log("Si persiste 'invalid header', verifica particiones y firmware", "info")
+                messagebox.showinfo(
+                    "Éxito",
+                    "✅ Bootloader flasheado correctamente\n\n"
+                    "El chip debería reiniciarse automáticamente.\n"
+                    "Si aún muestra 'invalid header', verifica que\n"
+                    "las particiones y el firmware estén flasheados."
+                )
+            else:
+                self.log(f"Error: esptool retornó código {process.returncode}", "error")
+                messagebox.showerror(
+                    "Error",
+                    f"Error flasheando bootloader.\n\n"
+                    f"Código de error: {process.returncode}\n\n"
+                    f"Revisa el log para más detalles."
+                )
+        
+        except Exception as e:
+            self.log(f"❌ ERROR flasheando bootloader: {e}", "error")
+            self.log_debug(f"Exception: {repr(e)}")
+            messagebox.showerror("Error", f"Error flasheando bootloader:\n\n{str(e)}")
+        
+        finally:
+            self.is_flashing = False
+            self.set_buttons_state('normal')
+            self.log_debug("Flash de bootloader finalizado")
+
     def detect_device_partitions(self):
         """Detect partition table from connected device"""
         if not self.selected_port.get():
@@ -1349,6 +1489,30 @@ class ESP32Flasher:
             self.log("No se detectaron puertos COM. Conecta tu ESP32 y actualiza.", "error")
             self.log_debug("No se encontraron puertos COM")
     
+    def get_bootloader_address(self):
+        """Get bootloader address based on chip type"""
+        chip = self.selected_chip.get()
+        if chip == "esp32s3":
+            return "0x0"  # ESP32-S3 uses 0x0
+        else:
+            return "0x1000"  # ESP32, ESP32-C3, etc. use 0x1000
+    
+    def get_partition_table_address(self):
+        """Get partition table address based on chip type"""
+        chip = self.selected_chip.get()
+        if chip == "esp32s3":
+            return "0x9000"  # ESP32-S3 uses 0x9000 (allows larger bootloader)
+        else:
+            return "0x8000"  # ESP32, ESP32-C3, etc. use 0x8000
+    
+    def set_buttons_state(self, state):
+        """Enable or disable all action buttons"""
+        self.flash_btn.config(state=state)
+        self.erase_btn.config(state=state)
+        self.erase_nvs_btn.config(state=state)
+        self.recovery_btn.config(state=state)
+        self.refresh_btn.config(state=state)
+    
     def start_flash(self):
         """Start flashing process in a separate thread"""
         if self.is_flashing:
@@ -1392,9 +1556,7 @@ class ESP32Flasher:
         
         # Start flashing thread
         self.is_flashing = True
-        self.flash_btn.config(state='disabled')
-        self.erase_btn.config(state='disabled')
-        self.refresh_btn.config(state='disabled')
+        self.set_buttons_state('disabled')
         self.progress.start()
         
         thread = threading.Thread(target=self.flash_firmware, args=(port,))
@@ -1597,10 +1759,7 @@ class ESP32Flasher:
         
         finally:
             self.is_flashing = False
-            self.flash_btn.config(state='normal')
-            self.erase_btn.config(state='normal')
-            self.erase_nvs_btn.config(state='normal')
-            self.refresh_btn.config(state='normal')
+            self.set_buttons_state('normal')
             self.progress.stop()
     
     def build_flasher_args(self, mode):
@@ -1640,14 +1799,17 @@ class ESP32Flasher:
                 if skip_bootloader:
                     self.log("🚫 Bootloader preservado (no se flasheará)", "info")
                 else:
-                    # Add bootloader to flash list
+                    # Add bootloader to flash list (chip-specific address)
+                    bootloader_addr = self.get_bootloader_address()
                     flasher_args["flash_files"].append(
-                        (self.esp_idf_addresses["bootloader"], self.bootloader_path, "Bootloader (2nd stage)")
+                        (bootloader_addr, self.bootloader_path, "Bootloader (2nd stage)")
                     )
+                    self.log(f"  • Bootloader → {bootloader_addr}", "info")
                 
                 # Always flash partitions
+                partition_addr = self.get_partition_table_address()
                 flasher_args["flash_files"].append(
-                    (self.esp_idf_addresses["partition_table"], self.partitions_path, "Partition Table")
+                    (partition_addr, self.partitions_path, "Partition Table")
                 )
                 
                 # Add OTA data if partitions support OTA
@@ -1664,8 +1826,8 @@ class ESP32Flasher:
                 )
                 
                 if not skip_bootloader:
-                    self.log(f"  • Bootloader → {self.esp_idf_addresses['bootloader']}", "info")
-                self.log(f"  • Partitions → {self.esp_idf_addresses['partition_table']}", "info")
+                    self.log(f"  • Bootloader → {self.get_bootloader_address()}", "info")
+                self.log(f"  • Partitions → {self.get_partition_table_address()}", "info")
                 if has_ota:
                     self.log(f"  • OTA Data → {self.esp_idf_addresses['ota_data']}", "info")
                 self.log(f"  • Firmware → {app_address}", "info")
@@ -1986,10 +2148,7 @@ class ESP32Flasher:
         
         # Iniciar borrado en un hilo separado
         self.is_flashing = True
-        self.flash_btn.config(state='disabled')
-        self.erase_btn.config(state='disabled')
-        self.erase_nvs_btn.config(state='disabled')
-        self.refresh_btn.config(state='disabled')
+        self.set_buttons_state('disabled')
         self.progress.start()
         
         thread = threading.Thread(target=self.erase_flash_chip, args=(port,))
@@ -2021,10 +2180,7 @@ class ESP32Flasher:
         
         # Iniciar borrado en un hilo separado
         self.is_flashing = True
-        self.flash_btn.config(state='disabled')
-        self.erase_btn.config(state='disabled')
-        self.erase_nvs_btn.config(state='disabled')
-        self.refresh_btn.config(state='disabled')
+        self.set_buttons_state('disabled')
         self.progress.start()
         
         thread = threading.Thread(target=self.erase_nvs_partition, args=(port,))
@@ -2120,10 +2276,7 @@ class ESP32Flasher:
         
         finally:
             self.is_flashing = False
-            self.flash_btn.config(state='normal')
-            self.erase_btn.config(state='normal')
-            self.erase_nvs_btn.config(state='normal')
-            self.refresh_btn.config(state='normal')
+            self.set_buttons_state('normal')
             self.progress.stop()
     
     def erase_flash_chip(self, port):
@@ -2193,10 +2346,7 @@ class ESP32Flasher:
         
         finally:
             self.is_flashing = False
-            self.flash_btn.config(state='normal')
-            self.erase_btn.config(state='normal')
-            self.erase_nvs_btn.config(state='normal')
-            self.refresh_btn.config(state='normal')
+            self.set_buttons_state('normal')
             self.progress.stop()
 
     def show_firmware_analysis(self):
