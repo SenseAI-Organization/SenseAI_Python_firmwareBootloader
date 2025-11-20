@@ -118,8 +118,18 @@ site/
 
 # Application Specific
 # --------------------
-# Keep these patterns commented out - uncomment if you have these files:
+# Certificate files (security sensitive)
+*.pem
+*.key
+*.crt
+*.cer
+
+# SPIFFS images and temporary files
+spiffs.bin
+spiffs_check.bin
+spiffs_readback.bin
+temp_partitions_read.bin
+
+# Keep commented out if you need to track specific config files:
 # config.json
 # settings.ini
-# *.key
-# *.pem
