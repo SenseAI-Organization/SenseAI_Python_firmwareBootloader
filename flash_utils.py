@@ -7,6 +7,7 @@ import subprocess
 import sys
 import re
 import os
+import shutil
 
 
 class FlashManager:
@@ -61,7 +62,7 @@ class FlashManager:
             return False
         
         try:
-            python_exe = sys.executable
+            python_exe = shutil.which('pythonw') or shutil.which('python') or sys.executable
             
             # Convert offset if needed
             if isinstance(offset, int):

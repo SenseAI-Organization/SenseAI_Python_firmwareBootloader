@@ -574,6 +574,68 @@ class ESP32Flasher:
             self.debug_text.see(tk.END)
             self.debug_text.config(state='disabled')
             self.root.update()
+
+    def _get_subprocess_python(self):
+        """Return a suitable Python executable for subprocess calls.
+        Prefer a venv python if present, then pythonw/python from PATH, then sys.executable.
+        This avoids re-launching the GUI exe when running as a PyInstaller onefile bundle.
+        """
+        import shutil
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        venv_pyw = os.path.join(script_dir, ".venv", "Scripts", "pythonw.exe")
+        venv_py = os.path.join(script_dir, ".venv", "Scripts", "python.exe")
+        if os.path.exists(venv_pyw):
+            return venv_pyw
+        if os.path.exists(venv_py):
+            return venv_py
+        # prefer pythonw on PATH to avoid opening consoles
+        pyw = shutil.which('pythonw')
+        if pyw:
+            return pyw
+        py = shutil.which('python') or shutil.which('python3')
+        if py:
+            return py
+        return sys.executable
+
+    def _run_esptool(self, esptool_args, capture_output=True, timeout=None):
+        """Run esptool with given args.
+        Try to run the esptool module in-process (if available). If not, fallback to
+        invoking an external Python executable with `-m esptool ...`.
+        Returns an object with attributes: returncode, stdout, stderr.
+        """
+        import io
+        import contextlib
+
+        class Result:
+            def __init__(self, returncode=0, stdout='', stderr=''):
+                self.returncode = returncode
+                self.stdout = stdout
+                self.stderr = stderr
+
+        try:
+            import esptool
+            # Run in-process and capture stdout/stderr
+            out_buf = io.StringIO()
+            err_buf = io.StringIO()
+            try:
+                with contextlib.redirect_stdout(out_buf), contextlib.redirect_stderr(err_buf):
+                    try:
+                        esptool.main(esptool_args)
+                        return Result(0, out_buf.getvalue(), err_buf.getvalue())
+                    except SystemExit as e:
+                        code = e.code if isinstance(e.code, int) else 0
+                        return Result(code, out_buf.getvalue(), err_buf.getvalue())
+            except Exception as e:
+                return Result(1, out_buf.getvalue(), f"Exception running esptool: {e}\n{err_buf.getvalue()}")
+        except Exception:
+            # Fallback to subprocess
+            python_exe = self._get_subprocess_python()
+            cmd = [python_exe, "-m", "esptool"] + list(esptool_args)
+            try:
+                proc = subprocess.run(cmd, capture_output=capture_output, text=True, timeout=timeout)
+                return Result(proc.returncode, proc.stdout if proc.stdout else '', proc.stderr if proc.stderr else '')
+            except Exception as e:
+                return Result(1, '', str(e))
     
     def log_serial(self, message, direction="rx"):
         """Log serial communication to debug panel (for esptool communication)"""
@@ -1053,63 +1115,16 @@ class ESP32Flasher:
         
         try:
             # Get Python executable
-            python_exe = sys.executable
+            python_exe = self._get_subprocess_python()
             if not python_exe or python_exe == '':
-                python_exe = 'python'
-            
-            # Build command to get chip info
-            cmd = [
-                python_exe, "-m", "esptool",
-                "--chip", chip,
-                "--port", port,
-                "--baud", "115200",
-                "chip-id"  # Updated from deprecated chip_id
-            ]
-            
-            self.log_debug(f"Ejecutando chip-id: {' '.join(cmd)}")
-            self.log_serial(f"CMD: chip-id on {port}", "tx")
-            
-            # Run command
-            result = subprocess.run(
-                cmd,
-                capture_output=True,
-                text=True,
-                timeout=30
-            )
-            
-            # Also get flash_id for more details
-            cmd_flash = [
-                python_exe, "-m", "esptool",
-                "--chip", chip,
-                "--port", port,
-                "--baud", "115200",
-                "flash-id"  # Updated from deprecated flash_id
-            ]
-            
-            self.log_debug(f"Ejecutando flash-id: {' '.join(cmd_flash)}")
-            result_flash = subprocess.run(
-                cmd_flash,
-                capture_output=True,
-                text=True,
-                timeout=30
-            )
-            
-            # Get security info (encryption, secure boot, etc.)
-            cmd_security = [
-                python_exe, "-m", "esptool",
-                "--chip", chip,
-                "--port", port,
-                "--baud", "115200",
-                "get-security-info"  # Updated: hyphenated
-            ]
-            
-            self.log_debug(f"Ejecutando get-security-info: {' '.join(cmd_security)}")
-            result_security = subprocess.run(
-                cmd_security,
-                capture_output=True,
-                text=True,
-                timeout=30
-            )
+                esptool_args = ["--chip", chip, "--port", port, "--baud", "115200", "read_mac"]
+                result = self._run_esptool(esptool_args, capture_output=True, timeout=15)
+                esptool_args = ["--chip", chip, "--port", port, "--baud", "115200", "chip_id"]
+                result = self._run_esptool(esptool_args, capture_output=True, timeout=15)
+                esptool_args = ["--chip", chip, "--port", port, "--baud", "115200", "read_flash", "0x1000", "0x100"]
+                result = self._run_esptool(esptool_args, capture_output=True, timeout=15)
+                esptool_args = ["--chip", chip, "--port", port, "--baud", "115200", "get-security-info"]
+                result_security = self._run_esptool(esptool_args, capture_output=True, timeout=30)
             
             progress_window.destroy()
             
@@ -1287,7 +1302,7 @@ class ESP32Flasher:
         
         try:
             # Get Python executable path
-            python_exe = sys.executable
+            python_exe = self._get_subprocess_python()
             self.log_debug(f"Python executable: {python_exe}")
             
             # Build esptool command
@@ -1421,7 +1436,7 @@ class ESP32Flasher:
                     temp_bootloader = os.path.join(tempfile.gettempdir(), "extracted_bootloader.bin")
                     
                     # Leer bootloader desde el chip (si existe)
-                    python_exe = sys.executable
+                    python_exe = self._get_subprocess_python()
                     cmd = [
                         python_exe, "-m", "esptool",
                         "--port", port,
@@ -1501,7 +1516,7 @@ class ESP32Flasher:
         try:
             port = self.selected_port.get().split(' - ')[0]
             chip = self.selected_chip.get()
-            python_exe = sys.executable
+            python_exe = self._get_subprocess_python()
             
             self.log("🚑 INICIANDO REPARACIÓN DE INVALID HEADER", "info")
             self.log("=" * 50, "info")
@@ -1712,7 +1727,7 @@ spiffs,      data, spiffs,  0x2A0000, 1472K
         self.set_buttons_state('disabled')
         
         try:
-            python_exe = sys.executable
+            python_exe = self._get_subprocess_python()
             
             # Step 0: Detect SPIFFS partition address and size
             self.log("🔍 Paso 0/3: Detectando partición SPIFFS...", "info")
@@ -1846,7 +1861,7 @@ spiffs,      data, spiffs,  0x2A0000, 1472K
     def _detect_spiffs_partition(self, port, chip):
         """Detect SPIFFS partition address and size from device"""
         try:
-            python_exe = sys.executable
+            python_exe = self._get_subprocess_python()
             script_dir = os.path.dirname(os.path.abspath(__file__))
             temp_file = os.path.join(script_dir, "temp_partitions.bin")
             
@@ -2231,7 +2246,7 @@ spiffs,      data, spiffs,  0x2A0000, 1472K
             # Wait for port to be ready after reset
             time.sleep(2)
             
-            python_exe = sys.executable
+            python_exe = self._get_subprocess_python()
             
             # Read first 4KB of SPIFFS to check it's not empty
             temp_read = os.path.join(os.path.dirname(os.path.abspath(__file__)), "spiffs_check.bin")
@@ -2256,13 +2271,9 @@ spiffs,      data, spiffs,  0x2A0000, 1472K
             
             self.log_debug(f"Verificando SPIFFS: {' '.join(read_cmd)}")
             
-            result = subprocess.run(
-                read_cmd,
-                capture_output=True,
-                text=True,
-                timeout=30
-            )
-            
+            esptool_args = ["--chip", chip, "--port", port, "--baud", "115200", "read-flash", "0x5F0000", str(check_size), temp_read]
+            result = self._run_esptool(esptool_args, capture_output=True, timeout=30)
+
             if result.returncode != 0:
                 self.log_debug(f"Error leyendo SPIFFS: {result.stderr}")
                 return False
@@ -2404,7 +2415,7 @@ spiffs,      data, spiffs,  0x2A0000, 1472K
             
             script_dir = os.path.dirname(os.path.abspath(__file__))
             venv_python = os.path.join(script_dir, ".venv", "Scripts", "python.exe")
-            python_exe = venv_python if os.path.exists(venv_python) else sys.executable
+            python_exe = venv_python if os.path.exists(venv_python) else self._get_subprocess_python()
             
             # Read partition table from device
             temp_file = os.path.join(script_dir, "temp_partitions.bin")
@@ -2423,8 +2434,10 @@ spiffs,      data, spiffs,  0x2A0000, 1472K
             self.log_debug(f"Ejecutando esptool para leer particiones: {' '.join(cmd)}")
             self.log_serial(f"Conectando a {port}...", "tx")
             
-            result = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
-            
+            # Run esptool (try in-process first, fallback to subprocess)
+            esptool_args = ["--chip", chip, "--port", port, "--baud", "115200", "read-flash", "0x8000", "0x1000", temp_file]
+            result = self._run_esptool(esptool_args, capture_output=True, timeout=30)
+
             self.log_debug(f"Código de retorno: {result.returncode}", "verbose")
             if result.stdout:
                 self.log_debug(f"STDOUT: {result.stdout[:200]}...", "verbose")
@@ -2928,7 +2941,7 @@ spiffs,      data, spiffs,  0x2A0000, 1472K
             # Get Python exe
             script_dir = os.path.dirname(os.path.abspath(__file__))
             venv_python = os.path.join(script_dir, ".venv", "Scripts", "python.exe")
-            python_exe = venv_python if os.path.exists(venv_python) else sys.executable
+            python_exe = venv_python if os.path.exists(venv_python) else self._get_subprocess_python()
             self.log_debug(f"Python ejecutable: {python_exe}")
             
             # Get configuration
@@ -3580,7 +3593,7 @@ spiffs,      data, spiffs,  0x2A0000, 1472K
             if os.path.exists(venv_python):
                 python_exe = venv_python
             else:
-                python_exe = sys.executable
+                python_exe = self._get_subprocess_python()
             
             chip = self.selected_chip.get()
             baud_rate = self.selected_baud.get()
@@ -3671,7 +3684,7 @@ spiffs,      data, spiffs,  0x2A0000, 1472K
             if os.path.exists(venv_python):
                 python_exe = venv_python
             else:
-                python_exe = sys.executable
+                python_exe = self._get_subprocess_python()
             
             chip = self.selected_chip.get()
             baud_rate = self.selected_baud.get()

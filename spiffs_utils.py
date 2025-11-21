@@ -66,7 +66,7 @@ class SPIFFSManager:
             Tuple of (offset, size) in bytes, or None if not found
         """
         try:
-            python_exe = sys.executable
+            python_exe = shutil.which('pythonw') or shutil.which('python') or sys.executable
             temp_file = os.path.join(self.script_dir, "temp_partitions.bin")
             
             self.log(f"Reading partition table from {port}...", "debug")
