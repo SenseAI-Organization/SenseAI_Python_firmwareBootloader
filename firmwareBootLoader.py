@@ -1729,33 +1729,26 @@ spiffs,      data, spiffs,  0x2A0000, 1472K
             spiffs_offset, spiffs_size = spiffs_info
             self.log(f"✅ SPIFFS detectado: 0x{spiffs_offset:X} ({spiffs_size} bytes)", "success")
             
-            # Step 1: Use pre-built SPIFFS image
-            # NOTE: Building SPIFFS with mkspiffs generates metadata that the ESP-IDF
-            # SPIFFS driver can reject. Using a pre-built image ensures reliability.
-            # To add new files: manually run mkspiffs, test, then update spiffs_with_correct_names.bin
+            # Step 1: Use pre-built SPIFFS image from data/ folder
+            # NOTE: Using pre-built image from data/spiffs.bin ensures reliability.
+            # SPIFFS images are pre-built and stored in data/ for consistency.
             self.log("🔨 Paso 1/3: Preparando imagen SPIFFS...", "info")
             
             script_dir = os.path.dirname(os.path.abspath(__file__))
-            spiffs_image = os.path.join(script_dir, "spiffs.bin")
-            known_good_image = os.path.join(script_dir, "spiffs_with_correct_names.bin")
+            spiffs_image = os.path.join(script_dir, "data", "spiffs.bin")
             
-            # Use the known-good pre-built image
-            if os.path.exists(known_good_image):
-                import shutil
-                try:
-                    shutil.copy2(known_good_image, spiffs_image)
-                    self.log("✅ Imagen SPIFFS preparada (usando imagen conocida)", "success")
-                    self.log(f"📦 Tamaño: {os.path.getsize(spiffs_image)} bytes", "info")
-                    self.log_debug(f"Copied {known_good_image} to {spiffs_image}")
-                except Exception as e:
-                    self.log(f"❌ Error preparando imagen SPIFFS: {e}", "error")
-                    return
+            # Use the pre-built image from data/ folder
+            if os.path.exists(spiffs_image):
+                self.log("✅ Imagen SPIFFS preparada (usando data/spiffs.bin)", "success")
+                self.log(f"📦 Tamaño: {os.path.getsize(spiffs_image)} bytes", "info")
+                self.log_debug(f"Using SPIFFS image: {spiffs_image}")
             else:
-                self.log(f"❌ No se encontró imagen SPIFFS conocida: {known_good_image}", "error")
-                self.log("Para crear una nueva imagen SPIFFS:", "warning")
-                self.log("1. Ejecuta manualmente: mkspiffs -c data -s 1212416 -p 256 -b 4096 spiffs_with_correct_names.bin", "warning")
-                self.log("2. Pruébala en el dispositivo", "warning")
-                self.log("3. Si funciona, cópiala como imagen 'conocida'", "warning")
+                self.log(f"❌ No se encontró imagen SPIFFS: {spiffs_image}", "error")
+                self.log("", "warning")
+                self.log("El archivo data/spiffs.bin debe existir.", "warning")
+                self.log("Este archivo contiene la imagen del filesystem con los certificados.", "warning")
+                self.log("", "warning")
+                self.log("Para más información, lee: docs/SPIFFS_GUIDE.md", "warning")
                 return
             
             # Step 2: Flash SPIFFS image

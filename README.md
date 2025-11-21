@@ -55,13 +55,15 @@ python firmwareBootLoader.py
 4. **Haz clic en "FLASHEAR FIRMWARE"**
 
 ### Subir Datos a SPIFFS
-1. **Añade tus archivos** a la carpeta `data/`
-   - Certificados, configuración, archivos de datos
-   - Ver `DATA_FOLDER_GUIDE.md` para detalles
+1. **Archivos en la carpeta `data/`** contienen:
+   - `spiffs.bin` - Imagen del filesystem (prebuilt, no modificar)
+   - `*.pem` - Certificados y claves
+   - Otros archivos necesarios
 2. **Conecta tu ESP32** al puerto USB
 3. **Haz clic en "Upload Data Folder (SPIFFS)"**
-4. El app detectará automáticamente la partición SPIFFS del dispositivo
-5. Los archivos estarán disponibles en el dispositivo como `/spiffs/filename`
+4. Los archivos estarán disponibles en el dispositivo como `/spiffs/filename`
+
+Para más detalles, ver **docs/SPIFFS_GUIDE.md**
 
 ## 📝 Estructura de Archivos
 
@@ -72,19 +74,22 @@ SenseAI_Python_firmwareBootloader/
 ├── install_dependencies.bat           # Instalador automático
 ├── crear_exe.bat                      # Compilar a .exe
 ├── README.md                          # Este archivo
-├── DATA_FOLDER_GUIDE.md               # Guía de cómo añadir archivos
-├── SPIFFS_USAGE_GUIDE.md              # Documentación técnica SPIFFS
-├── SPIFFS_IMPLEMENTATION.md           # Detalles de implementación
-├── spiffs_with_correct_names.bin      # Imagen SPIFFS (no borrar)
+├── docs/                              # 📚 Documentación completa
+│   ├── SPIFFS_GUIDE.md               # Guía SPIFFS
+│   ├── SPIFFS_TROUBLESHOOTING.md     # Solución de problemas
+│   └── TECHNICAL_DETAILS.md          # Detalles técnicos
 ├── data/                              # 📁 Carpeta para tus archivos
+│   ├── spiffs.bin                    # Imagen SPIFFS (basada en prebuilt)
 │   ├── hermesTestClientCert.pem
 │   ├── hermesTestClientKey.pem
 │   └── hermesTestServerCert.pem
 └── firmware/                          # Carpeta para archivos .bin de firmware
 ```
 
-**⚠️ IMPORTANTE**: Añade tus archivos a la carpeta `data/` para subirlos a SPIFFS.
-Ver `DATA_FOLDER_GUIDE.md` para instrucciones detalladas.
+**⚠️ IMPORTANTE**: 
+- La carpeta `data/` contiene los archivos que se suben a SPIFFS
+- El archivo `spiffs.bin` es la imagen del filesystem que se flashea al dispositivo
+- Ver `docs/SPIFFS_GUIDE.md` para instrucciones detalladas
 
 ## 🐛 Troubleshooting
 
@@ -121,6 +126,15 @@ Ver `DATA_FOLDER_GUIDE.md` para instrucciones detalladas.
 - **Borrar flash**: ✅ Activado
 - **Verificar**: ✅ Activado
 - **Preservar NVS**: ❌ Desactivado (a menos que necesites mantener WiFi)
+
+## 📚 Documentación
+
+Para documentación completa, consulta la carpeta **[docs/](docs/)**:
+
+- **[docs/INDEX.md](docs/INDEX.md)** - Índice de documentación
+- **[docs/SPIFFS_GUIDE.md](docs/SPIFFS_GUIDE.md)** - Guía práctica de SPIFFS
+- **[docs/SPIFFS_TROUBLESHOOTING.md](docs/SPIFFS_TROUBLESHOOTING.md)** - Solución de problemas
+- **[docs/TECHNICAL_DETAILS.md](docs/TECHNICAL_DETAILS.md)** - Detalles técnicos y arquitectura
 
 ## 🔗 Direcciones de Flash Estándar
 
