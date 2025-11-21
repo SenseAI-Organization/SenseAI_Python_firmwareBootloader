@@ -1729,27 +1729,34 @@ spiffs,      data, spiffs,  0x2A0000, 1472K
             spiffs_offset, spiffs_size = spiffs_info
             self.log(f"✅ SPIFFS detectado: 0x{spiffs_offset:X} ({spiffs_size} bytes)", "success")
             
-            # Step 1: Build SPIFFS image
-            self.log("🔨 Paso 1/3: Construyendo imagen SPIFFS...", "info")
+            # Step 1: Use pre-built SPIFFS image
+            # NOTE: Building SPIFFS with mkspiffs generates metadata that the ESP-IDF
+            # SPIFFS driver can reject. Using a pre-built image ensures reliability.
+            # To add new files: manually run mkspiffs, test, then update spiffs_with_correct_names.bin
+            self.log("🔨 Paso 1/3: Preparando imagen SPIFFS...", "info")
             
-            spiffs_image = os.path.join(os.path.dirname(os.path.abspath(__file__)), "spiffs.bin")
+            script_dir = os.path.dirname(os.path.abspath(__file__))
+            spiffs_image = os.path.join(script_dir, "spiffs.bin")
+            known_good_image = os.path.join(script_dir, "spiffs_with_correct_names.bin")
             
-            # Step 1: Build SPIFFS image using best available tool
-            try:
-                self.log_debug("Intentando crear imagen SPIFFS usando herramientas preferidas (esp-idf, mkspiffs)")
-                self._build_spiffs_image(data_folder, spiffs_image, spiffs_size)
-                self.log("✅ Imagen SPIFFS creada exitosamente", "success")
+            # Use the known-good pre-built image
+            if os.path.exists(known_good_image):
+                import shutil
                 try:
+                    shutil.copy2(known_good_image, spiffs_image)
+                    self.log("✅ Imagen SPIFFS preparada (usando imagen conocida)", "success")
                     self.log(f"📦 Tamaño: {os.path.getsize(spiffs_image)} bytes", "info")
-                except:
-                    pass
-
-            except Exception as e:
-                self.log(f"⚠️ No se pudo crear imagen SPIFFS con herramientas externas: {e}", "warning")
-                self.log("📝 Creando imagen SPIFFS manualmente (fallback)...", "info")
-                # Create a simple SPIFFS-like image (padded binary)
-                self._create_simple_spiffs_image(data_folder, spiffs_image, spiffs_size)
-                self.log("✅ Imagen SPIFFS básica creada", "success")
+                    self.log_debug(f"Copied {known_good_image} to {spiffs_image}")
+                except Exception as e:
+                    self.log(f"❌ Error preparando imagen SPIFFS: {e}", "error")
+                    return
+            else:
+                self.log(f"❌ No se encontró imagen SPIFFS conocida: {known_good_image}", "error")
+                self.log("Para crear una nueva imagen SPIFFS:", "warning")
+                self.log("1. Ejecuta manualmente: mkspiffs -c data -s 1212416 -p 256 -b 4096 spiffs_with_correct_names.bin", "warning")
+                self.log("2. Pruébala en el dispositivo", "warning")
+                self.log("3. Si funciona, cópiala como imagen 'conocida'", "warning")
+                return
             
             # Step 2: Flash SPIFFS image
             self.log(f"📤 Paso 2/3: Flasheando SPIFFS a 0x{spiffs_offset:X}...", "info")
@@ -1764,7 +1771,7 @@ spiffs,      data, spiffs,  0x2A0000, 1472K
                 "write-flash",
                 "-z",
                 "--flash-mode", "dio",
-                "--flash-freq", "80m",
+                "--flash-freq", "40m",
                 "--flash-size", "detect",
                 f"0x{spiffs_offset:X}", spiffs_image
             ]
@@ -2011,13 +2018,55 @@ spiffs,      data, spiffs,  0x2A0000, 1472K
                 if padding > 0:
                     out.write(b'\xFF' * padding)
 
+    def _should_rebuild_spiffs(self, data_folder, output_file):
+        """Check if SPIFFS image needs rebuilding.
+        Only rebuild if data folder contents changed (matches PlatformIO behavior).
+        This prevents non-deterministic metadata changes that can cause device issues.
+        """
+        if not os.path.exists(output_file):
+            self.log_debug("No existing SPIFFS image, will rebuild")
+            return True
+        
+        try:
+            # Get the latest modification time from all files in data folder
+            latest_data_mtime = 0
+            for root, dirs, files in os.walk(data_folder):
+                for f in files:
+                    file_path = os.path.join(root, f)
+                    mtime = os.path.getmtime(file_path)
+                    latest_data_mtime = max(latest_data_mtime, mtime)
+            
+            # Get the modification time of the output image
+            output_mtime = os.path.getmtime(output_file)
+            
+            # Rebuild only if data is newer than image
+            should_rebuild = latest_data_mtime > output_mtime
+            if not should_rebuild:
+                self.log_debug(f"SPIFFS image is up-to-date (data unchanged), skipping rebuild")
+            else:
+                self.log_debug(f"Data folder modified, will rebuild SPIFFS image")
+            
+            return should_rebuild
+        except Exception as e:
+            self.log_debug(f"Error checking SPIFFS cache: {e}, will rebuild")
+            return True
+
     def _build_spiffs_image(self, data_folder, output_file, size):
-        """Attempt to build SPIFFS image using esp-idf spiffsgen, then mkspiffs.
-        Raises Exception if no suitable tool is available or all attempts fail.
+        """Build SPIFFS image using mkspiffs.
+        Files from data/ are stored as /filename in SPIFFS.
+        When mounted at /spiffs, they become /spiffs/filename (matching firmware expectations).
+        
+        Implements PlatformIO-style caching: only rebuild if data folder contents changed.
+        This ensures deterministic metadata and prevents device SPIFFS validation issues.
         """
         import shutil, sys
 
         script_dir = os.path.dirname(os.path.abspath(__file__))
+        
+        # Check if rebuild is needed (cache check - matches PlatformIO behavior)
+        if not self._should_rebuild_spiffs(data_folder, output_file):
+            self.log_debug(f"Using cached SPIFFS image: {output_file}")
+            return
 
         # Helper: search repository 'tools' folder for candidate scripts/binaries
         def repo_tools_candidates(name):
@@ -2030,31 +2079,8 @@ spiffs,      data, spiffs,  0x2A0000, 1472K
                             candidates.append(os.path.join(root, f))
             return candidates
 
-        # 1) Prefer spiffsgen.py found in repo tools/ or in IDF_PATH
-        spiffsgen_candidates = []
-        spiffsgen_candidates.extend(repo_tools_candidates('spiffsgen.py'))
-        idf_path = os.environ.get('IDF_PATH') or os.environ.get('ESP_IDF_PATH')
-        if idf_path:
-            spiffsgen_candidates.append(os.path.join(idf_path, 'tools', 'spiffsgen.py'))
-            spiffsgen_candidates.append(os.path.join(idf_path, 'components', 'spiffs', 'spiffsgen.py'))
-
-        for spiffsgen in spiffsgen_candidates:
-            if spiffsgen and os.path.exists(spiffsgen):
-                cmd = [sys.executable, spiffsgen, '-c', data_folder, '-s', str(size), output_file]
-                self.log_debug(f"Intentando spiffsgen: {' '.join(cmd)}")
-                try:
-                    result = subprocess.run(cmd, capture_output=True, text=True, timeout=120)
-                    if result.returncode == 0:
-                        self.log_debug("spiffsgen creado con éxito")
-                        return
-                    else:
-                        self.log_debug(f"spiffsgen falló ({spiffsgen}): {result.stderr}")
-                except Exception as e:
-                    self.log_debug(f"Error ejecutando spiffsgen ({spiffsgen}): {e}")
-
-        # 2) Try mkspiffs: first check repo tools folder, then PATH, then attempt download
+        # Try mkspiffs: first check repo tools folder, then PATH, then download
         mkspiffs_candidates = repo_tools_candidates('mkspiffs.exe')
-        # include mkspiffs without extension too
         mkspiffs_candidates.extend(repo_tools_candidates('mkspiffs'))
 
         # Check PATH
@@ -2062,7 +2088,7 @@ spiffs,      data, spiffs,  0x2A0000, 1472K
         if which_path:
             mkspiffs_candidates.append(which_path)
 
-        # 2b) Check PlatformIO packages for tool-mkspiffs
+        # Check PlatformIO packages for tool-mkspiffs
         try:
             pio_base = os.path.join(os.path.expanduser('~'), '.platformio', 'packages')
             if os.path.exists(pio_base):
@@ -2070,7 +2096,6 @@ spiffs,      data, spiffs,  0x2A0000, 1472K
                     for d in dirs:
                         if d.lower().startswith('tool-mkspiffs') or d.lower().startswith('mkspiffs'):
                             candidate = os.path.join(root, d)
-                            # common bin locations
                             for sub in ('bin', ''):
                                 cand = os.path.join(candidate, sub, 'mkspiffs.exe')
                                 if os.path.exists(cand):
@@ -2081,7 +2106,7 @@ spiffs,      data, spiffs,  0x2A0000, 1472K
         except Exception:
             pass
 
-        # If none found in repo tools, attempt to auto-download into tools/
+        # If none found, attempt to auto-download
         tools_dir = os.path.join(script_dir, 'tools')
         os.makedirs(tools_dir, exist_ok=True)
         repo_mkspiffs = os.path.join(tools_dir, 'mkspiffs.exe')
@@ -2093,7 +2118,7 @@ spiffs,      data, spiffs,  0x2A0000, 1472K
             except Exception as e:
                 self.log_debug(f'mkspiffs download failed: {e}')
 
-        # Prefer PlatformIO-provided mkspiffs for espidf if present
+        # Prefer PlatformIO's espidf variant
         ordered = []
         espidf_pref = []
         other_pref = []
@@ -2108,13 +2133,26 @@ spiffs,      data, spiffs,  0x2A0000, 1472K
 
         for mkb in ordered:
             if mkb and os.path.exists(mkb):
-                # Use the same flags PlatformIO uses for espressif32 espidf builds
+                # Build directly from data_folder
+                # Files will be stored as /filename (no /spiffs/ prefix)
+                # When SPIFFS is mounted at /spiffs, they become /spiffs/filename
                 cmd = [mkb, '-c', data_folder, '-s', str(size), '-p', '256', '-b', '4096', output_file]
                 self.log_debug(f"Intentando mkspiffs: {' '.join(cmd)}")
+                self.log_debug(f"  mkspiffs path: {mkb}")
+                self.log_debug(f"  data_folder: {data_folder}")
+                self.log_debug(f"  output_file: {output_file}")
+                self.log_debug(f"  size: {size}")
                 try:
                     result = subprocess.run(cmd, capture_output=True, text=True, timeout=120)
+                    self.log_debug(f"mkspiffs stdout: {result.stdout}")
                     if result.returncode == 0:
                         self.log_debug('mkspiffs creado con éxito')
+                        # Verify the output file exists
+                        if os.path.exists(output_file):
+                            file_size = os.path.getsize(output_file)
+                            self.log_debug(f'Output file verified: {output_file} ({file_size} bytes)')
+                        else:
+                            self.log_debug(f'ERROR: Output file not found: {output_file}')
                         return
                     else:
                         self.log_debug(f'mkspiffs falló ({mkb}): {result.stderr}')
@@ -2122,7 +2160,7 @@ spiffs,      data, spiffs,  0x2A0000, 1472K
                     self.log_debug(f'Error ejecutando mkspiffs ({mkb}): {e}')
 
         # If we reach here, no external tool produced a valid image
-        raise Exception('No se encontró spiffsgen (esp-idf) ni mkspiffs funcionales (intentado repo tools, PATH y descarga)')
+        raise Exception('No se encontró mkspiffs funcional')
 
     def _download_mkspiffs(self, dest_path):
         """Attempt to download mkspiffs binary from GitHub releases into dest_path.

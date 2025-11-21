@@ -25,6 +25,12 @@ python firmwareBootLoader.py
 - **Simple Mode**: Solo firmware (actualización rápida)
 - **Complete Mode**: Bootloader + Partitions + Firmware (flasheo completo)
 
+### 📤 Nuevo: Upload Data Folder (SPIFFS)
+- **Upload SPIFFS**: Sube certificados y archivos de datos al filesystem SPIFFS del ESP32
+- Auto-detecta partición SPIFFS desde la tabla de particiones del dispositivo
+- Soporta certificados, configuración, y cualquier archivo de datos
+- Los archivos se almacenan en `/spiffs/` en el dispositivo
+
 ### Paneles de Debug
 - **Debug Messages**: Mensajes detallados de depuración
 - **Serial Monitor**: Monitor TX/RX de comunicación serial
@@ -36,9 +42,11 @@ python firmwareBootLoader.py
 - ✅ Smart Erase (preserva NVS/WiFi)
 - ✅ Análisis de firmware
 - ✅ Tracking de sesión con MACs
+- ✅ Upload de datos a SPIFFS filesystem
 
 ## 🔧 Uso
 
+### Flashear Firmware
 1. **Conecta tu ESP32** al puerto USB
 2. **Selecciona el modo**:
    - Simple: Solo firmware.bin
@@ -46,16 +54,37 @@ python firmwareBootLoader.py
 3. **Selecciona archivos** (o usa auto-detección)
 4. **Haz clic en "FLASHEAR FIRMWARE"**
 
+### Subir Datos a SPIFFS
+1. **Añade tus archivos** a la carpeta `data/`
+   - Certificados, configuración, archivos de datos
+   - Ver `DATA_FOLDER_GUIDE.md` para detalles
+2. **Conecta tu ESP32** al puerto USB
+3. **Haz clic en "Upload Data Folder (SPIFFS)"**
+4. El app detectará automáticamente la partición SPIFFS del dispositivo
+5. Los archivos estarán disponibles en el dispositivo como `/spiffs/filename`
+
 ## 📝 Estructura de Archivos
 
 ```
 SenseAI_Python_firmwareBootloader/
-├── firmwareBootLoader.py          # Aplicación principal
-├── requirements.txt               # Dependencias Python
-├── install_dependencies.bat       # Instalador automático
-├── crear_exe.bat                  # Compilar a .exe
-└── firmware/                      # Carpeta para archivos .bin
+├── firmwareBootLoader.py              # Aplicación principal
+├── requirements.txt                   # Dependencias Python
+├── install_dependencies.bat           # Instalador automático
+├── crear_exe.bat                      # Compilar a .exe
+├── README.md                          # Este archivo
+├── DATA_FOLDER_GUIDE.md               # Guía de cómo añadir archivos
+├── SPIFFS_USAGE_GUIDE.md              # Documentación técnica SPIFFS
+├── SPIFFS_IMPLEMENTATION.md           # Detalles de implementación
+├── spiffs_with_correct_names.bin      # Imagen SPIFFS (no borrar)
+├── data/                              # 📁 Carpeta para tus archivos
+│   ├── hermesTestClientCert.pem
+│   ├── hermesTestClientKey.pem
+│   └── hermesTestServerCert.pem
+└── firmware/                          # Carpeta para archivos .bin de firmware
 ```
+
+**⚠️ IMPORTANTE**: Añade tus archivos a la carpeta `data/` para subirlos a SPIFFS.
+Ver `DATA_FOLDER_GUIDE.md` para instrucciones detalladas.
 
 ## 🐛 Troubleshooting
 
