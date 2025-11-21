@@ -408,6 +408,12 @@ class ESP32Flasher:
                                            command=self.fix_invalid_header, width=12)
         self.fix_bootloader_btn.grid(row=0, column=3, padx=2, sticky=(tk.W, tk.E))
         
+        # Tools: mkspiffs installer
+        tools_frame = ttk.Frame(self.advanced_frame)
+        tools_frame.pack(fill=tk.X, pady=(5,0))
+        ttk.Label(tools_frame, text="SPIFFS Tools:", font=('Segoe UI', 9, 'bold')).grid(row=0, column=0, sticky=tk.W)
+        self.install_mkspiffs_btn = ttk.Button(tools_frame, text="Install mkspiffs", command=self.install_mkspiffs, width=20)
+        self.install_mkspiffs_btn.grid(row=0, column=1, sticky=(tk.E))
 
         
         # === PROGRESS BAR ===
@@ -687,6 +693,39 @@ class ESP32Flasher:
         ttk.Radiobutton(flow_frame, text="XON/XOFF", variable=self.flow_control, value="xonxoff").pack(anchor=tk.W)
         
         ttk.Button(advanced_window, text="OK", command=advanced_window.destroy).pack(pady=10)
+
+    def install_mkspiffs(self):
+        """UI handler: install mkspiffs into repo tools/ using background thread."""
+        if self.is_flashing:
+            messagebox.showwarning("Ocupado", "No se puede instalar mientras hay una operación en progreso")
+            return
+
+        thread = threading.Thread(target=self._install_mkspiffs_thread)
+        thread.daemon = True
+        thread.start()
+
+    def _install_mkspiffs_thread(self):
+        """Background worker to download mkspiffs and report to UI."""
+        try:
+            self.set_buttons_state('disabled')
+            script_dir = os.path.dirname(os.path.abspath(__file__))
+            tools_dir = os.path.join(script_dir, 'tools')
+            os.makedirs(tools_dir, exist_ok=True)
+            dest = os.path.join(tools_dir, 'mkspiffs.exe')
+
+            self.log("📥 Instalando mkspiffs en carpeta tools/...", "info")
+            self.log_debug(f"Destino mkspiffs: {dest}")
+
+            try:
+                self._download_mkspiffs(dest)
+                self.log("✅ mkspiffs instalado correctamente", "success")
+                messagebox.showinfo("Instalación completada", f"mkspiffs fue instalado en:\n{dest}")
+            except Exception as e:
+                self.log(f"❌ Error instalando mkspiffs: {e}", "error")
+                messagebox.showerror("Error", f"No se pudo instalar mkspiffs:\n{e}")
+
+        finally:
+            self.set_buttons_state('normal')
     
     def save_log_to_file(self):
         """Save all logs to a file"""
@@ -1642,7 +1681,7 @@ spiffs,      data, spiffs,  0x2A0000, 1472K
             f"{file_list}\n\n"
             f"• Puerto: {port}\n"
             f"• Chip: {chip}\n"
-            f"• Partición: SPIFFS @ 0x5F0000 (1184K)\n\n"
+            f"• Partición: Se detectará automáticamente desde el dispositivo\n\n"
             f"Esta operación creará una imagen del filesystem\n"
             f"y la flasheará en la partición SPIFFS.\n\n"
             f"¿Continuar?"
@@ -1675,44 +1714,45 @@ spiffs,      data, spiffs,  0x2A0000, 1472K
         try:
             python_exe = sys.executable
             
+            # Step 0: Detect SPIFFS partition address and size
+            self.log("🔍 Paso 0/3: Detectando partición SPIFFS...", "info")
+            
+            spiffs_info = self._detect_spiffs_partition(port, chip)
+            if not spiffs_info:
+                self.log("❌ No se pudo detectar la partición SPIFFS", "error")
+                messagebox.showerror("Error", 
+                    "No se pudo detectar la partición SPIFFS en el dispositivo.\n\n"
+                    "Asegúrate de que el dispositivo tenga una tabla de particiones válida\n"
+                    "con una partición SPIFFS configurada.")
+                return
+            
+            spiffs_offset, spiffs_size = spiffs_info
+            self.log(f"✅ SPIFFS detectado: 0x{spiffs_offset:X} ({spiffs_size} bytes)", "success")
+            
             # Step 1: Build SPIFFS image
-            self.log("🔨 Paso 1/2: Construyendo imagen SPIFFS...", "info")
+            self.log("🔨 Paso 1/3: Construyendo imagen SPIFFS...", "info")
             
             spiffs_image = os.path.join(os.path.dirname(os.path.abspath(__file__)), "spiffs.bin")
             
-            # Check if mkspiffs tool is available
+            # Step 1: Build SPIFFS image using best available tool
             try:
-                # Try to use mkspiffs from PlatformIO or system
-                mkspiffs_cmd = ["mkspiffs", "-c", data_folder, "-s", "1212416", spiffs_image]
-                
-                self.log_debug(f"Comando mkspiffs: {' '.join(mkspiffs_cmd)}")
-                
-                result = subprocess.run(
-                    mkspiffs_cmd,
-                    capture_output=True,
-                    text=True,
-                    timeout=60
-                )
-                
-                if result.returncode != 0:
-                    # Try alternative: use Python-based SPIFFS creation
-                    raise Exception("mkspiffs no disponible, usando método alternativo...")
-                
+                self.log_debug("Intentando crear imagen SPIFFS usando herramientas preferidas (esp-idf, mkspiffs)")
+                self._build_spiffs_image(data_folder, spiffs_image, spiffs_size)
                 self.log("✅ Imagen SPIFFS creada exitosamente", "success")
-                self.log(f"📦 Tamaño: {os.path.getsize(spiffs_image)} bytes", "info")
-                
+                try:
+                    self.log(f"📦 Tamaño: {os.path.getsize(spiffs_image)} bytes", "info")
+                except:
+                    pass
+
             except Exception as e:
-                self.log(f"⚠️ mkspiffs no disponible: {e}", "warning")
-                self.log("📝 Creando imagen SPIFFS manualmente...", "info")
-                
+                self.log(f"⚠️ No se pudo crear imagen SPIFFS con herramientas externas: {e}", "warning")
+                self.log("📝 Creando imagen SPIFFS manualmente (fallback)...", "info")
                 # Create a simple SPIFFS-like image (padded binary)
-                # This is a simplified version - for production use mkspiffs
-                self._create_simple_spiffs_image(data_folder, spiffs_image, 1212416)
-                
+                self._create_simple_spiffs_image(data_folder, spiffs_image, spiffs_size)
                 self.log("✅ Imagen SPIFFS básica creada", "success")
             
             # Step 2: Flash SPIFFS image
-            self.log("📤 Paso 2/2: Flasheando SPIFFS a 0x5F0000...", "info")
+            self.log(f"📤 Paso 2/3: Flasheando SPIFFS a 0x{spiffs_offset:X}...", "info")
             
             flash_cmd = [
                 python_exe, "-m", "esptool",
@@ -1726,7 +1766,7 @@ spiffs,      data, spiffs,  0x2A0000, 1472K
                 "--flash-mode", "dio",
                 "--flash-freq", "80m",
                 "--flash-size", "detect",
-                "0x5F0000", spiffs_image
+                f"0x{spiffs_offset:X}", spiffs_image
             ]
             
             self.log_debug(f"Comando flash: {' '.join(flash_cmd)}")
@@ -1800,30 +1840,357 @@ spiffs,      data, spiffs,  0x2A0000, 1472K
         finally:
             self.is_flashing = False
             self.set_buttons_state('normal')
-            self.log_debug("Upload de data folder finalizado")
+            self.progress['value'] = 0
+            self.status_label.config(text="Idle")
+    
+    def _detect_spiffs_partition(self, port, chip):
+        """Detect SPIFFS partition address and size from device"""
+        try:
+            python_exe = sys.executable
+            script_dir = os.path.dirname(os.path.abspath(__file__))
+            temp_file = os.path.join(script_dir, "temp_partitions.bin")
+            
+            # Read partition table from device
+            cmd = [
+                python_exe, "-m", "esptool",
+                "--chip", chip,
+                "--port", port,
+                "--baud", "115200",
+                "read-flash",
+                "0x8000", "0x1000",  # Read 4KB partition table
+                temp_file
+            ]
+            
+            self.log_debug(f"Reading partition table: {' '.join(cmd)}")
+            result = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
+            
+            if result.returncode != 0 or not os.path.exists(temp_file):
+                self.log_debug(f"Failed to read partition table: {result.stderr}")
+                return None
+            
+            # Parse partition table to find SPIFFS
+            with open(temp_file, 'rb') as f:
+                data = f.read()
+            
+            # Clean up temp file
+            try:
+                os.remove(temp_file)
+            except:
+                pass
+            
+            # Check magic bytes
+            if len(data) < 32 or data[0:2] != b'\xAA\x50':
+                self.log_debug("Invalid partition table magic bytes")
+                return None
+            
+            # Parse entries (32 bytes each)
+            offset = 0
+            while offset + 32 <= len(data):
+                if data[offset:offset+2] != b'\xAA\x50':
+                    break
+                
+                ptype = data[offset+2]
+                subtype = data[offset+3]
+                p_offset = struct.unpack('<I', data[offset+4:offset+8])[0]
+                p_size = struct.unpack('<I', data[offset+8:offset+12])[0]
+                label = data[offset+12:offset+28].decode('utf-8', errors='ignore').rstrip('\x00')
+                
+                # SPIFFS is type 1 (data), subtype 0x82
+                if ptype == 1 and subtype == 0x82:
+                    self.log_debug(f"Found SPIFFS partition: {label} @ 0x{p_offset:X}, size 0x{p_size:X}")
+                    return (p_offset, p_size)
+                
+                offset += 32
+            
+            self.log_debug("No SPIFFS partition found in partition table")
+            return None
+            
+        except Exception as e:
+            self.log_debug(f"Error detecting SPIFFS partition: {e}")
+            return None
     
     def _create_simple_spiffs_image(self, data_folder, output_file, size):
-        """Create a simple padded image with files (fallback when mkspiffs not available)"""
-        # This is a simplified version that just pads the files
-        # For proper SPIFFS filesystem, mkspiffs tool is required
-        with open(output_file, 'wb') as out:
-            # Write all files concatenated
-            files = sorted([f for f in os.listdir(data_folder) if os.path.isfile(os.path.join(data_folder, f))])
-            
-            for filename in files:
-                filepath = os.path.join(data_folder, filename)
-                self.log(f"  📄 Agregando: {filename}", "info")
-                with open(filepath, 'rb') as f:
-                    out.write(f.read())
-            
-            # Pad to full size
-            current_size = out.tell()
-            padding = size - current_size
-            if padding > 0:
-                out.write(b'\xFF' * padding)
+        """Create a simple SPIFFS-like image with object entries (fallback when mkspiffs not available)"""
+        import struct
         
-        self.log(f"⚠️ ADVERTENCIA: Imagen creada sin formato SPIFFS completo", "warning")
-        self.log(f"   Para funcionalidad completa, instala mkspiffs", "warning")
+        try:
+            # Collect all files
+            files = []
+            for filename in sorted(os.listdir(data_folder)):
+                filepath = os.path.join(data_folder, filename)
+                if os.path.isfile(filepath):
+                    with open(filepath, 'rb') as f:
+                        content = f.read()
+                    files.append((filename, content))
+                    self.log(f"  📄 Agregando: {filename} ({len(content)} bytes)", "info")
+            
+            with open(output_file, 'wb') as out:
+                # SPIFFS superblock (simplified)
+                # Magic bytes
+                out.write(b'\x53\x50\x49\x46')  # 'SPIF'
+                # Version
+                out.write(struct.pack('<I', 0x10000))  # Version 1.0.0
+                # Block size
+                block_size = 4096
+                out.write(struct.pack('<I', block_size))
+                # Page size
+                page_size = 256
+                out.write(struct.pack('<I', page_size))
+                # Reserved
+                out.write(struct.pack('<I', 0))
+                
+                # Calculate data start offset (after superblock)
+                data_offset = 4096  # Start after first block
+                
+                # Create file objects
+                current_offset = data_offset
+                for filename, content in files:
+                    # Object header (simplified SPIFFS object format)
+                    # Object type (file = 1)
+                    out.write(struct.pack('<B', 1))
+
+                    # Use relative path inside data folder and normalize separators
+                    relpath = os.path.relpath(os.path.join(data_folder, filename), data_folder).replace('\\', '/')
+                    # If files are at the root of data/, place them under the 'spiffs/' directory
+                    if not relpath.startswith('spiffs/'):
+                        relpath = 'spiffs/' + relpath
+
+                    # Name length + name
+                    name_bytes = relpath.encode('utf-8')
+                    out.write(struct.pack('<B', len(name_bytes)))
+                    out.write(name_bytes)
+
+                    # Pad name to 32 bytes total (type + len + name)
+                    header_size = 2 + len(name_bytes)
+                    pad_size = 32 - header_size
+                    if pad_size > 0:
+                        out.write(b'\x00' * pad_size)
+
+                    # File size
+                    out.write(struct.pack('<I', len(content)))
+                    # Data offset
+                    out.write(struct.pack('<I', current_offset))
+                    # Reserved
+                    out.write(struct.pack('<I', 0))
+
+                    current_offset += len(content)
+                
+                # Fill rest of superblock with 0xFF
+                current_pos = out.tell()
+                while current_pos < data_offset:
+                    out.write(b'\xFF')
+                    current_pos += 1
+                
+                # Write file data
+                for filename, content in files:
+                    out.write(content)
+                
+                # Pad to full size with 0xFF
+                current_size = out.tell()
+                padding = size - current_size
+                if padding > 0:
+                    out.write(b'\xFF' * padding)
+            
+            self.log(f"✅ Imagen SPIFFS básica creada ({len(files)} archivos)", "success")
+            self.log(f"⚠️ ADVERTENCIA: Usando formato SPIFFS simplificado", "warning")
+            self.log(f"   Para funcionalidad completa, instala mkspiffs", "warning")
+            
+        except Exception as e:
+            self.log(f"❌ Error creando imagen SPIFFS: {e}", "error")
+            # Fallback to even simpler method
+            self.log("📝 Usando método de concatenación básico...", "info")
+            with open(output_file, 'wb') as out:
+                for filename in sorted(os.listdir(data_folder)):
+                    filepath = os.path.join(data_folder, filename)
+                    if os.path.isfile(filepath):
+                        with open(filepath, 'rb') as f:
+                            out.write(f.read())
+                
+                current_size = out.tell()
+                padding = size - current_size
+                if padding > 0:
+                    out.write(b'\xFF' * padding)
+
+    def _build_spiffs_image(self, data_folder, output_file, size):
+        """Attempt to build SPIFFS image using esp-idf spiffsgen, then mkspiffs.
+        Raises Exception if no suitable tool is available or all attempts fail.
+        """
+        import shutil, sys
+
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+
+        # Helper: search repository 'tools' folder for candidate scripts/binaries
+        def repo_tools_candidates(name):
+            tools_dir = os.path.join(script_dir, 'tools')
+            candidates = []
+            if os.path.exists(tools_dir):
+                for root, _, files in os.walk(tools_dir):
+                    for f in files:
+                        if f.lower() == name.lower() or f.lower().startswith(name.lower()):
+                            candidates.append(os.path.join(root, f))
+            return candidates
+
+        # 1) Prefer spiffsgen.py found in repo tools/ or in IDF_PATH
+        spiffsgen_candidates = []
+        spiffsgen_candidates.extend(repo_tools_candidates('spiffsgen.py'))
+        idf_path = os.environ.get('IDF_PATH') or os.environ.get('ESP_IDF_PATH')
+        if idf_path:
+            spiffsgen_candidates.append(os.path.join(idf_path, 'tools', 'spiffsgen.py'))
+            spiffsgen_candidates.append(os.path.join(idf_path, 'components', 'spiffs', 'spiffsgen.py'))
+
+        for spiffsgen in spiffsgen_candidates:
+            if spiffsgen and os.path.exists(spiffsgen):
+                cmd = [sys.executable, spiffsgen, '-c', data_folder, '-s', str(size), output_file]
+                self.log_debug(f"Intentando spiffsgen: {' '.join(cmd)}")
+                try:
+                    result = subprocess.run(cmd, capture_output=True, text=True, timeout=120)
+                    if result.returncode == 0:
+                        self.log_debug("spiffsgen creado con éxito")
+                        return
+                    else:
+                        self.log_debug(f"spiffsgen falló ({spiffsgen}): {result.stderr}")
+                except Exception as e:
+                    self.log_debug(f"Error ejecutando spiffsgen ({spiffsgen}): {e}")
+
+        # 2) Try mkspiffs: first check repo tools folder, then PATH, then attempt download
+        mkspiffs_candidates = repo_tools_candidates('mkspiffs.exe')
+        # include mkspiffs without extension too
+        mkspiffs_candidates.extend(repo_tools_candidates('mkspiffs'))
+
+        # Check PATH
+        which_path = shutil.which('mkspiffs')
+        if which_path:
+            mkspiffs_candidates.append(which_path)
+
+        # 2b) Check PlatformIO packages for tool-mkspiffs
+        try:
+            pio_base = os.path.join(os.path.expanduser('~'), '.platformio', 'packages')
+            if os.path.exists(pio_base):
+                for root, dirs, files in os.walk(pio_base):
+                    for d in dirs:
+                        if d.lower().startswith('tool-mkspiffs') or d.lower().startswith('mkspiffs'):
+                            candidate = os.path.join(root, d)
+                            # common bin locations
+                            for sub in ('bin', ''):
+                                cand = os.path.join(candidate, sub, 'mkspiffs.exe')
+                                if os.path.exists(cand):
+                                    mkspiffs_candidates.append(cand)
+                                cand2 = os.path.join(candidate, sub, 'mkspiffs')
+                                if os.path.exists(cand2):
+                                    mkspiffs_candidates.append(cand2)
+        except Exception:
+            pass
+
+        # If none found in repo tools, attempt to auto-download into tools/
+        tools_dir = os.path.join(script_dir, 'tools')
+        os.makedirs(tools_dir, exist_ok=True)
+        repo_mkspiffs = os.path.join(tools_dir, 'mkspiffs.exe')
+        if not any(os.path.exists(p) for p in mkspiffs_candidates) and not os.path.exists(repo_mkspiffs):
+            try:
+                self.log_debug('Attempting to download mkspiffs binary into tools/ folder')
+                self._download_mkspiffs(repo_mkspiffs)
+                mkspiffs_candidates.append(repo_mkspiffs)
+            except Exception as e:
+                self.log_debug(f'mkspiffs download failed: {e}')
+
+        # Prefer PlatformIO-provided mkspiffs for espidf if present
+        ordered = []
+        espidf_pref = []
+        other_pref = []
+        for p in mkspiffs_candidates:
+            lname = os.path.basename(p).lower()
+            if 'espressif32_espidf' in lname or ('espressif32' in lname and 'espidf' in lname):
+                espidf_pref.append(p)
+            else:
+                other_pref.append(p)
+        ordered.extend(espidf_pref)
+        ordered.extend(other_pref)
+
+        for mkb in ordered:
+            if mkb and os.path.exists(mkb):
+                # Use the same flags PlatformIO uses for espressif32 espidf builds
+                cmd = [mkb, '-c', data_folder, '-s', str(size), '-p', '256', '-b', '4096', output_file]
+                self.log_debug(f"Intentando mkspiffs: {' '.join(cmd)}")
+                try:
+                    result = subprocess.run(cmd, capture_output=True, text=True, timeout=120)
+                    if result.returncode == 0:
+                        self.log_debug('mkspiffs creado con éxito')
+                        return
+                    else:
+                        self.log_debug(f'mkspiffs falló ({mkb}): {result.stderr}')
+                except Exception as e:
+                    self.log_debug(f'Error ejecutando mkspiffs ({mkb}): {e}')
+
+        # If we reach here, no external tool produced a valid image
+        raise Exception('No se encontró spiffsgen (esp-idf) ni mkspiffs funcionales (intentado repo tools, PATH y descarga)')
+
+    def _download_mkspiffs(self, dest_path):
+        """Attempt to download mkspiffs binary from GitHub releases into dest_path.
+        If download fails, raises Exception with instructions for manual placement.
+        """
+        import urllib.request
+        import stat
+
+        # Try GitHub API to find latest release asset for Windows x64, then fall back to known URLs
+        api_url = 'https://api.github.com/repos/igrr/mkspiffs/releases/latest'
+        tried_urls = []
+
+        def try_url(u):
+            self.log_debug(f"Attempting download from {u}")
+            tried_urls.append(u)
+            with urllib.request.urlopen(u, timeout=30) as resp:
+                if resp.status != 200:
+                    raise Exception(f'HTTP {resp.status}')
+                data = resp.read()
+            with open(dest_path, 'wb') as f:
+                f.write(data)
+            try:
+                os.chmod(dest_path, stat.S_IEXEC | stat.S_IREAD | stat.S_IWRITE)
+            except Exception:
+                pass
+            self.log(f"✅ mkspiffs descargado en: {dest_path}", 'success')
+            return True
+
+        # 1) Try GitHub API to locate an appropriate asset
+        try:
+            req = urllib.request.Request(api_url, headers={'User-Agent': 'python-urllib'})
+            with urllib.request.urlopen(req, timeout=15) as resp:
+                if resp.status == 200:
+                    import json
+                    info = json.load(resp)
+                    for asset in info.get('assets', []):
+                        name = asset.get('name', '').lower()
+                        if 'windows' in name or 'win' in name or 'x64' in name:
+                            download_url = asset.get('browser_download_url')
+                            try:
+                                if try_url(download_url):
+                                    return
+                            except Exception as e:
+                                self.log_debug(f'GitHub asset download failed: {e}')
+        except Exception as e:
+            self.log_debug(f'GitHub API check failed: {e}')
+
+        # 2) Fallback list of direct release URLs (older releases)
+        fallback_urls = [
+            'https://github.com/igrr/mkspiffs/releases/download/0.2.3/mkspiffs-0.2.3-windows-x64.exe',
+            'https://github.com/igrr/mkspiffs/releases/download/0.2.2/mkspiffs-0.2.2-windows-x64.exe',
+        ]
+
+        for u in fallback_urls:
+            try:
+                if try_url(u):
+                    return
+            except Exception as e:
+                self.log_debug(f'Fallback URL failed: {u} -> {e}')
+
+        # If download failed, remove any partial file
+        try:
+            if os.path.exists(dest_path):
+                os.remove(dest_path)
+        except:
+            pass
+
+        raise Exception(f"No se pudo descargar mkspiffs automáticamente. Intentados: {tried_urls}.\nPor favor descarga 'mkspiffs-<version>-windows-x64.exe' de https://github.com/igrr/mkspiffs/releases y colócalo en: {os.path.dirname(dest_path)}")
 
     def _verify_spiffs_upload(self, port, chip, spiffs_image):
         """Verify that SPIFFS partition has data (not empty/erased)"""
