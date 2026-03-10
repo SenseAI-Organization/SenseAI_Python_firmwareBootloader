@@ -1,0 +1,422 @@
+{
+  "bootloader_configuration": {
+    "version": "2.0.1",
+    "project_name": "Corona SmartFlux Firmware Bootloader",
+    "last_updated": "2026-03-09T18:00:00Z",
+    "operator_guide": "See BOOTLOADER_SPECIFICATION.md for complete documentation"
+  },
+  
+  "target_hardware": {
+    "board": {
+      "name": "Corona SmartFlux",
+      "project_name": "Corona_SmartUrinal_LoRaWAN",
+      "manufacturer": "Sense AI / Corona",
+      "pcb_version": "v2.1",
+      "product_type": "Smart Urinal Controller with LoRaWAN"
+    },
+    
+    "mcu": {
+      "family": "STM32WL",
+      "part_number": "STM32WLE5JCI6",
+      "full_name": "STM32WLE5JCIx",
+      "package": "UFBGA73",
+      "core": "ARM Cortex-M4",
+      "cpu_frequency_mhz": 48,
+      "flash_size_kb": 256,
+      "ram_size_kb": 64,
+      "ram2_size_kb": 32,
+      "features": [
+        "Sub-GHz LoRa Radio",
+        "Built-in LoRaWAN stack",
+        "AES-256 hardware encryption",
+        "Ultra-low-power modes",
+        "12-bit ADC",
+        "Multiple timers"
+      ]
+    },
+    
+    "memory_map": {
+      "flash": {
+        "start_address": "0x08000000",
+        "end_address": "0x0803FFFF",
+        "size_bytes": 262144,
+        "sector_size_bytes": 2048,
+        "total_sectors": 128
+      },
+      "ram": {
+        "main_start": "0x20000000",
+        "main_size_bytes": 65536,
+        "ram2_start": "0x10000000",
+        "ram2_size_bytes": 32768
+      },
+      "special_regions": {
+        "lorawan_nvm_address": "0x0803F000",
+        "lorawan_nvm_size_bytes": 4096,
+        "secure_element_start": "0x0803E000",
+        "secure_element_end": "0x0803FFFF",
+        "unique_id_address": "0x1FFF7590",
+        "unique_id_size_bytes": 12,
+        "device_signature": "0x1FFF7500"
+      }
+    },
+    
+    "clock_config": {
+      "system_clock_mhz": 48,
+      "hclk_mhz": 48,
+      "apb1_mhz": 48,
+      "apb2_mhz": 48,
+      "lse_khz": 32.768,
+      "rtc_source": "LSE",
+      "radio_clock_mhz": 32,
+      "radio_oscillator": "TCXO"
+    }
+  },
+  
+  "flash_configuration": {
+    "debugger": {
+      "type": "ST-Link V3",
+      "interface": "SWD",
+      "connection_speed_khz": 4000,
+      "max_speed_khz": 8000,
+      "reset_mode": "hardware",
+      "halt_after_reset": true,
+      "alternative_debuggers": ["ST-Link V2", "J-Link", "UART Bootloader"]
+    },
+    
+    "programming": {
+      "flash_algorithm": "STM32WLxx_256.FLM",
+      "erase_before_program": true,
+      "erase_type": "full_chip",
+      "verify_after_program": true,
+      "reset_after_program": true,
+      "programming_timeout_ms": 30000,
+      "verification_method": "CRC32",
+      "voltage_range": "2.7V - 3.6V"
+    },
+    
+    "firmware": {
+      "default_firmware_path": "./firmware/Corona_SmartUrinal_LoRaWAN.hex",
+      "firmware_format": "Intel HEX",
+      "alternative_formats": ["Binary (.bin)", "ELF (.elf)"],
+      "backup_old_firmware": true,
+      "backup_path": "./firmware/backups/",
+      "verify_checksum_before_flash": true
+    },
+    
+    "tools": {
+      "stm32_cube_programmer": {
+        "cli_command": "STM32_Programmer_CLI.exe",
+        "connection_params": "--connect port=SWD",
+        "download_command": "--download {firmware_file}",
+        "verify_command": "--verify",
+        "start_command": "--start 0x08000000"
+      },
+      "openocd": {
+        "interface_config": "interface/stlink.cfg",
+        "target_config": "target/stm32wlx.cfg",
+        "program_command": "program {firmware_file} verify reset exit"
+      },
+      "pyocd": {
+        "target": "stm32wle5jc",
+        "frequency": "4000000",
+        "python_library": "pyocd>=0.35.1"
+      }
+    }
+  },
+  
+  "lorawan_provisioning": {
+    "network_server": {
+      "provider": "The Things Network",
+      "region": "US915",
+      "join_server_url": "https://nam1.cloud.thethings.network",
+      "application_id": "corona-smartflux-prod"
+    },
+    
+    "credentials": {
+      "join_eui": {
+        "value": "24E124C0002A0001",
+        "format": "hex",
+        "description": "Common for all devices in application",
+        "source": "TTN Application Console"
+      },
+      
+      "device_eui": {
+        "generation_mode": "auto_from_uid",
+        "prefix": "70B3D57ED8",
+        "format": "hex",
+        "source": "Derived from STM32 96-bit UID",
+        "unique_per_device": true
+      },
+      
+      "app_key": {
+        "generation_mode": "random_secure",
+        "length_bits": 128,
+        "format": "hex",
+        "storage": "encrypted_key_vault",
+        "unique_per_device": true
+      },
+      
+      "nwk_key": {
+        "generation_mode": "same_as_appkey",
+        "note": "For LoRaWAN 1.0.x compatibility",
+        "unique_per_device": true
+      }
+    },
+    
+    "lorawan_config": {
+      "specification_version": "1.0.4",
+      "activation_method": "OTAA",
+      "device_class": "A",
+      "confirmed_uplinks": false,
+      "adaptive_data_rate": true,
+      "default_data_rate": "SF10BW125",
+      "tx_power": "14dBm",
+      "rx1_delay": "1s",
+      "rx2_frequency": "923.3MHz",
+      "rx2_data_rate": "SF12BW500"
+    }
+  },
+  
+  "device_logging": {
+    "database": {
+      "file_path": "./logs/device_flash_log.json",
+      "format": "JSON",
+      "backup_enabled": true,
+      "backup_interval_hours": 24,
+      "backup_path": "./logs/backups/",
+      "backup_retention_days": 365
+    },
+    
+    "serial_number": {
+      "prefix": "CORONA-FLUX-",
+      "starting_number": 1,
+      "leading_zeros": 5,
+      "format_example": "CORONA-FLUX-00042",
+      "increment_mode": "automatic"
+    },
+    
+    "device_entry_structure": {
+      "required_fields": [
+        "device_serial",
+        "device_uid",
+        "chip_id",
+        "flash_events",
+        "lorawan_config"
+      ],
+      "optional_fields": [
+        "hardware_config",
+        "production_data",
+        "device_metadata"
+      ]
+    },
+    
+    "flash_event_fields": {
+      "event_id": "Unique identifier (e.g., FL-00042-001)",
+      "timestamp": "ISO 8601 format (UTC)",
+      "event_type": "INITIAL_PROGRAMMING | FIRMWARE_UPDATE | RECONFIGURATION",
+      "firmware_version": "Semantic version (e.g., 1.2.0)",
+      "firmware_file": "Filename of flashed binary",
+      "firmware_checksum": "CRC32 hex value",
+      "flash_size_bytes": "Total bytes programmed",
+      "flash_duration_seconds": "Time taken to program",
+      "programmer_id": "Debugger serial number",
+      "operator": "Name of person performing flash",
+      "status": "SUCCESS | FAILED | PARTIAL",
+      "verification": {
+        "crc_match": "boolean",
+        "memory_test": "PASS | FAIL",
+        "boot_test": "PASS | FAIL"
+      }
+    },
+    
+    "exports": {
+      "csv_enabled": true,
+      "csv_path": "./exports/device_inventory.csv",
+      "pdf_reports": true,
+      "pdf_path": "./exports/reports/",
+      "qr_code_generation": true,
+      "qr_code_path": "./exports/qr_codes/"
+    }
+  },
+  
+  "production": {
+    "batch_settings": {
+      "batch_mode_enabled": true,
+      "batch_prefix": "BATCH-",
+      "batch_format_example": "BATCH-2026-03-001",
+      "devices_per_batch": 50
+    },
+    
+    "quality_control": {
+      "qc_required": true,
+      "post_flash_tests": [
+        "LED blink test",
+        "UART console check",
+        "Battery voltage reading",
+        "GPIO functionality",
+        "LoRaWAN join attempt (optional)"
+      ],
+      "inspection_required": true,
+      "inspector_list": [
+        "Maria Rodriguez",
+        "Juan Perez",
+        "Carlos Martinez"
+      ]
+    },
+    
+    "labels": {
+      "qr_code_format": "QR_CODE_2D",
+      "qr_code_content": [
+        "Serial Number",
+        "DevEUI",
+        "Firmware Version",
+        "Production Date"
+      ],
+      "label_printer": "Zebra ZD420",
+      "label_size_mm": "50x30"
+    }
+  },
+  
+  "hardware_configuration": {
+    "product_classes": {
+      "PURPLE_CLASS": {
+        "dip_switch": "0b00",
+        "flow_calibration_factor": 450.0,
+        "consumption_liters": 1.6,
+        "timeout_ms": 3000,
+        "description": "High flow rate model"
+      },
+      "GREEN_CLASS": {
+        "dip_switch": "0b01",
+        "flow_calibration_factor": 520.0,
+        "consumption_liters": 1.2,
+        "timeout_ms": 3000,
+        "description": "Medium flow rate model"
+      },
+      "BLUE_CLASS": {
+        "dip_switch": "0b10",
+        "flow_calibration_factor": 600.0,
+        "consumption_liters": 0.8,
+        "timeout_ms": 3000,
+        "description": "Low flow rate model"
+      },
+      "WHITE_CLASS": {
+        "dip_switch": "0b11",
+        "flow_calibration_factor": 500.0,
+        "consumption_liters": 1.0,
+        "timeout_ms": 3000,
+        "description": "Standard model"
+      }
+    },
+    
+    "sensors": {
+      "flow_sensor": {
+        "type": "Hall effect pulse counter",
+        "interrupt_pin": "FLOW_INT_Pin",
+        "calibration_range": "400-650 pulses/liter",
+        "max_flow_rate_lpm": 12.0
+      },
+      "ultrasonic": {
+        "type": "HC-SR04 compatible",
+        "trigger_pin": "TRIGGER_GPIO_Port",
+        "echo_pin": "PWM_ECHO_GPIO_Port",
+        "measurement_range_cm": "3-100",
+        "trimmer_adjustment": true
+      },
+      "battery_monitor": {
+        "type": "Voltage divider + ADC",
+        "adc_channel": "ADC_CHANNEL_11",
+        "voltage_range": "3.3V - 4.2V",
+        "battery_type": "Li-Ion 18650 3.7V"
+      }
+    },
+    
+    "actuators": {
+      "solenoid_valve": {
+        "control_pins": ["MTB_1_Pin", "MTB_2_Pin"],
+        "drive_voltage": "12V",
+        "control_type": "H-Bridge"
+      },
+      "led_strip": {
+        "type": "WS2812B RGB",
+        "control_pin": "TIM17_CH1 PWM+DMA",
+        "num_leds": 8,
+        "voltage": "5V"
+      }
+    }
+  },
+  
+  "security": {
+    "key_management": {
+      "encryption_algorithm": "AES-256-GCM",
+      "key_vault_path": "./keys/secure_vault.enc",
+      "master_password_required": true,
+      "key_rotation_enabled": false,
+      "key_backup_enabled": true
+    },
+    
+    "access_control": {
+      "authentication_required": true,
+      "operator_accounts": true,
+      "role_based_access": false,
+      "audit_logging": true
+    },
+    
+    "compliance": {
+      "gdpr_compliant": true,
+      "data_retention_days": 1095,
+      "secure_deletion": true
+    }
+  },
+  
+  "workflow": {
+    "standard_procedure": [
+      "1. Connect device via ST-Link",
+      "2. Read device UID and verify chip",
+      "3. Load firmware and verify checksum",
+      "4. Generate/assign LoRaWAN credentials",
+      "5. Erase and program flash memory",
+      "6. Verify programmed data (CRC32)",
+      "7. Perform post-flash tests",
+      "8. Log device to database",
+      "9. Generate QR code label",
+      "10. Disconnect and proceed to next device"
+    ],
+    
+    "error_handling": {
+      "connection_failed": "Retry 3 times, then alert operator",
+      "verification_failed": "Re-program device, log incident",
+      "checksum_mismatch": "Alert operator, do not program",
+      "duplicate_device": "Prompt for reprogramming reason"
+    }
+  },
+  
+  "reporting": {
+    "daily_summary": {
+      "enabled": true,
+      "generation_time": "18:00",
+      "email_recipients": ["production@senseai.co", "qc@corona.com"],
+      "include_statistics": true
+    },
+    
+    "batch_report": {
+      "format": "PDF",
+      "sections": [
+        "Batch summary",
+        "Device list with serial numbers",
+        "QC test results",
+        "LoRaWAN credentials table"
+      ]
+    }
+  },
+  
+  "support": {
+    "documentation": "BOOTLOADER_SPECIFICATION.md",
+    "contact": {
+      "engineer": "emmanuel@sense-ai.co",
+      "company": "Sense AI",
+      "repository": "https://github.com/SenseAI-Organization/Corona_SmartFlux"
+    },
+    "troubleshooting_guide": "docs/TROUBLESHOOTING.md"
+  }
+}

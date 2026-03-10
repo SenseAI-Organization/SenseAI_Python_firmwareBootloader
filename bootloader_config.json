@@ -1,0 +1,121 @@
+{
+  "bootloader_version": "2.0.1",
+  "project_name": "Corona SmartFlux Firmware Bootloader",
+
+  "target_mcu": {
+    "family": "STM32WL",
+    "part_number": "STM32WLE5JCI6",
+    "flash_start": "0x08000000",
+    "flash_size_kb": 256,
+    "uid_address": "0x1FFF7590",
+    "uid_size_bytes": 12
+  },
+
+  "flash_settings": {
+    "interface": "SWD",
+    "swd_speed_khz": 4000,
+    "erase_before_program": true,
+    "erase_type": "full_chip",
+    "verify_after_program": true,
+    "reset_after_program": true,
+    "programming_timeout_ms": 30000,
+    "retry_count": 3
+  },
+
+  "firmware": {
+    "default_path": "./firmware/Corona_SmartUrinal_LoRaWAN.hex",
+    "backup_path": "./firmware/backups/",
+    "verify_checksum_before_flash": true,
+    "allowed_formats": [".hex", ".bin", ".elf"]
+  },
+
+  "serial_capture": {
+    "enabled": true,
+    "default_baudrate": 115200,
+    "timeout_seconds": 15,
+    "credential_source": "serial",
+    "fallback_to_uid_derived": true,
+    "end_marker": "---",
+    "firmware_output_format": "DEVEUI:XX\r\nJOINEUI:XX\r\nAPPKEY:XX\r\nDEVADDR:XX\r\nFW:X.X\r\n---\r\n",
+    "patterns": {
+      "deveui": "DEVEUI:(?P<value>[0-9A-Fa-f]{16})",
+      "joineui": "JOINEUI:(?P<value>[0-9A-Fa-f]{16})",
+      "appkey": "APPKEY:(?P<value>[0-9A-Fa-f]{32})",
+      "devaddr": "DEVADDR:(?P<value>[0-9A-Fa-f]{8})",
+      "fw_version": "FW:(?P<value>\\d+\\.\\d+)"
+    },
+    "note": "After flashing, the device boots and prints DEVEUI/JOINEUI/APPKEY/DEVADDR/FW over USART2 at 115200 baud, 3x for reliability, terminated by --- end marker."
+  },
+
+  "lorawan": {
+    "join_eui": "24E124C0002A0001",
+    "oui_prefix": "70B3D57ED8",
+    "specification_version": "1.0.4",
+    "activation_method": "OTAA",
+    "device_class": "A",
+    "region": "US915",
+    "application_id": "corona-smartflux-prod",
+    "network_server": "The Things Network"
+  },
+
+  "serial_number": {
+    "prefix": "CORONA-FLUX-",
+    "starting_number": 1,
+    "leading_zeros": 5
+  },
+
+  "product_classes": {
+    "PURPLE_CLASS": {
+      "dip_switch": "0b00",
+      "flow_calibration_factor": 450.0,
+      "consumption_liters": 1.6,
+      "description": "High flow rate model"
+    },
+    "GREEN_CLASS": {
+      "dip_switch": "0b01",
+      "flow_calibration_factor": 520.0,
+      "consumption_liters": 1.2,
+      "description": "Medium flow rate model"
+    },
+    "BLUE_CLASS": {
+      "dip_switch": "0b10",
+      "flow_calibration_factor": 600.0,
+      "consumption_liters": 0.8,
+      "description": "Low flow rate model"
+    },
+    "WHITE_CLASS": {
+      "dip_switch": "0b11",
+      "flow_calibration_factor": 500.0,
+      "consumption_liters": 1.0,
+      "description": "Standard model"
+    }
+  },
+
+  "production": {
+    "batch_prefix": "BATCH-",
+    "devices_per_batch": 50,
+    "inspectors": ["Maria Rodriguez", "Juan Perez", "Carlos Martinez"],
+    "post_flash_tests": [
+      "LED blink test",
+      "UART console check",
+      "Battery voltage reading",
+      "GPIO functionality",
+      "LoRaWAN join attempt (optional)"
+    ]
+  },
+
+  "logging": {
+    "database_path": "./logs/device_flash_log.json",
+    "backup_enabled": true,
+    "backup_path": "./logs/backups/"
+  },
+
+  "exports": {
+    "base_path": "./exports/",
+    "csv_inventory": true,
+    "ttn_json": true,
+    "ttn_csv": true,
+    "chirpstack_json": true,
+    "qr_code_path": "./exports/qr_codes/"
+  }
+}

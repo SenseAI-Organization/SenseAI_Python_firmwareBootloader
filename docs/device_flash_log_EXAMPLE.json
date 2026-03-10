@@ -1,0 +1,247 @@
+{
+  "database_version": "1.0",
+  "created_at": "2026-01-15T00:00:00Z",
+  "last_updated": "2026-03-09T18:30:45Z",
+  "total_devices": 3,
+  "devices": [
+    {
+      "device_serial": "CORONA-FLUX-00041",
+      "device_uid": "0x1A2B3C4D5E6F7890ABCD",
+      "chip_id": "STM32WLE5JCI6",
+      "flash_events": [
+        {
+          "event_id": "FL-00041-001",
+          "timestamp": "2026-03-09T14:30:12Z",
+          "event_type": "INITIAL_PROGRAMMING",
+          "firmware_version": "1.2.0",
+          "firmware_file": "Corona_SmartUrinal_LoRaWAN_v1.2.0.hex",
+          "firmware_checksum": "CRC32: 0xABCD1234",
+          "flash_size_bytes": 245760,
+          "flash_duration_seconds": 12.8,
+          "programmer_id": "ST-Link-V3-003F00123456",
+          "operator": "Juan Perez",
+          "status": "SUCCESS",
+          "verification": {
+            "crc_match": true,
+            "memory_test": "PASS",
+            "boot_test": "PASS"
+          }
+        }
+      ],
+      "lorawan_config": {
+        "deveui": "70B3D57ED8004E5B",
+        "joineui": "24E124C0002A0001",
+        "appkey": "ED1DC3BFBEEFC91EDABE077AC3E460F",
+        "nwkkey": "ED1DC3BFBEEFC91EDABE077AC3E460F",
+        "region": "US915",
+        "class": "A",
+        "activation": "OTAA",
+        "network_server": "The Things Network",
+        "application_name": "corona-smartflux-prod"
+      },
+      "hardware_config": {
+        "product_class": "PURPLE_CLASS",
+        "dip_switch_setting": "0b00",
+        "flow_sensor_calibration": 450.0,
+        "ultrasonic_trimmer_distance_cm": 25,
+        "battery_type": "Li-Ion 18650 3.7V",
+        "pcb_version": "v2.1",
+        "assembly_date": "2026-03-01"
+      },
+      "production_data": {
+        "batch_number": "BATCH-2026-03-001",
+        "production_line": "LINE-A",
+        "qc_inspector": "Maria Rodriguez",
+        "qc_status": "APPROVED",
+        "deployment_location": "Hospital Central - Floor 3 - Men's Restroom A",
+        "deployment_date": "2026-03-15",
+        "warranty_expiry": "2028-03-15"
+      },
+      "device_metadata": {
+        "created_at": "2026-03-09T14:30:12Z",
+        "updated_at": "2026-03-09T14:45:30Z",
+        "first_join_timestamp": "2026-03-09T15:10:22Z",
+        "last_seen_timestamp": "2026-03-09T18:30:45Z",
+        "total_flash_count": 1,
+        "notes": "Initial production unit for Hospital Central deployment"
+      }
+    },
+    {
+      "device_serial": "CORONA-FLUX-00042",
+      "device_uid": "0x2B3C4D5E6F7890ABCD12",
+      "chip_id": "STM32WLE5JCI6",
+      "flash_events": [
+        {
+          "event_id": "FL-00042-001",
+          "timestamp": "2026-03-09T14:35:45Z",
+          "event_type": "INITIAL_PROGRAMMING",
+          "firmware_version": "1.2.0",
+          "firmware_file": "Corona_SmartUrinal_LoRaWAN_v1.2.0.hex",
+          "firmware_checksum": "CRC32: 0xABCD1234",
+          "flash_size_bytes": 245760,
+          "flash_duration_seconds": 13.1,
+          "programmer_id": "ST-Link-V3-003F00123456",
+          "operator": "Juan Perez",
+          "status": "SUCCESS",
+          "verification": {
+            "crc_match": true,
+            "memory_test": "PASS",
+            "boot_test": "PASS"
+          }
+        }
+      ],
+      "lorawan_config": {
+        "deveui": "70B3D57ED8004E5C",
+        "joineui": "24E124C0002A0001",
+        "appkey": "F23C45D6E7F891A0BC12DE3456FA78B9",
+        "nwkkey": "F23C45D6E7F891A0BC12DE3456FA78B9",
+        "region": "US915",
+        "class": "A",
+        "activation": "OTAA",
+        "network_server": "The Things Network",
+        "application_name": "corona-smartflux-prod"
+      },
+      "hardware_config": {
+        "product_class": "GREEN_CLASS",
+        "dip_switch_setting": "0b01",
+        "flow_sensor_calibration": 520.0,
+        "ultrasonic_trimmer_distance_cm": 30,
+        "battery_type": "Li-Ion 18650 3.7V",
+        "pcb_version": "v2.1",
+        "assembly_date": "2026-03-01"
+      },
+      "production_data": {
+        "batch_number": "BATCH-2026-03-001",
+        "production_line": "LINE-A",
+        "qc_inspector": "Maria Rodriguez",
+        "qc_status": "APPROVED",
+        "deployment_location": "Hospital Central - Floor 3 - Men's Restroom B",
+        "deployment_date": "2026-03-15",
+        "warranty_expiry": "2028-03-15"
+      },
+      "device_metadata": {
+        "created_at": "2026-03-09T14:35:45Z",
+        "updated_at": "2026-03-09T14:48:20Z",
+        "first_join_timestamp": "2026-03-09T15:15:30Z",
+        "last_seen_timestamp": "2026-03-09T18:25:10Z",
+        "total_flash_count": 1,
+        "notes": "Second production unit for Hospital Central deployment"
+      }
+    },
+    {
+      "device_serial": "CORONA-FLUX-00043",
+      "device_uid": "0x3C4D5E6F7890ABCD1234",
+      "chip_id": "STM32WLE5JCI6",
+      "flash_events": [
+        {
+          "event_id": "FL-00043-001",
+          "timestamp": "2026-03-09T14:40:22Z",
+          "event_type": "INITIAL_PROGRAMMING",
+          "firmware_version": "1.2.0",
+          "firmware_file": "Corona_SmartUrinal_LoRaWAN_v1.2.0.hex",
+          "firmware_checksum": "CRC32: 0xABCD1234",
+          "flash_size_bytes": 245760,
+          "flash_duration_seconds": 12.7,
+          "programmer_id": "ST-Link-V3-003F00123456",
+          "operator": "Juan Perez",
+          "status": "SUCCESS",
+          "verification": {
+            "crc_match": true,
+            "memory_test": "PASS",
+            "boot_test": "PASS"
+          }
+        },
+        {
+          "event_id": "FL-00043-002",
+          "timestamp": "2026-03-10T10:15:33Z",
+          "event_type": "FIRMWARE_UPDATE",
+          "firmware_version": "1.2.1",
+          "firmware_file": "Corona_SmartUrinal_LoRaWAN_v1.2.1.hex",
+          "firmware_checksum": "CRC32: 0xDEF45678",
+          "flash_size_bytes": 246272,
+          "flash_duration_seconds": 13.5,
+          "programmer_id": "ST-Link-V3-003F00123456",
+          "operator": "Carlos Martinez",
+          "status": "SUCCESS",
+          "reason": "Bug fix for flow sensor timeout",
+          "verification": {
+            "crc_match": true,
+            "memory_test": "PASS",
+            "boot_test": "PASS"
+          }
+        }
+      ],
+      "lorawan_config": {
+        "deveui": "70B3D57ED8004E5D",
+        "joineui": "24E124C0002A0001",
+        "appkey": "A3B4C5D6E7F89012BC34DE5678FA0123",
+        "nwkkey": "A3B4C5D6E7F89012BC34DE5678FA0123",
+        "region": "US915",
+        "class": "A",
+        "activation": "OTAA",
+        "network_server": "The Things Network",
+        "application_name": "corona-smartflux-prod"
+      },
+      "hardware_config": {
+        "product_class": "BLUE_CLASS",
+        "dip_switch_setting": "0b10",
+        "flow_sensor_calibration": 600.0,
+        "ultrasonic_trimmer_distance_cm": 28,
+        "battery_type": "Li-Ion 18650 3.7V",
+        "pcb_version": "v2.1",
+        "assembly_date": "2026-03-01"
+      },
+      "production_data": {
+        "batch_number": "BATCH-2026-03-001",
+        "production_line": "LINE-A",
+        "qc_inspector": "Maria Rodriguez",
+        "qc_status": "APPROVED",
+        "deployment_location": "Hospital Central - Floor 4 - Men's Restroom A",
+        "deployment_date": "2026-03-15",
+        "warranty_expiry": "2028-03-15"
+      },
+      "device_metadata": {
+        "created_at": "2026-03-09T14:40:22Z",
+        "updated_at": "2026-03-10T10:15:33Z",
+        "first_join_timestamp": "2026-03-09T15:20:45Z",
+        "last_seen_timestamp": "2026-03-10T12:45:20Z",
+        "total_flash_count": 2,
+        "notes": "Firmware updated to v1.2.1 for flow sensor timeout fix"
+      }
+    }
+  ],
+  "statistics": {
+    "total_flash_events": 4,
+    "success_rate_percent": 100.0,
+    "average_flash_time_seconds": 13.0,
+    "firmware_versions": {
+      "1.2.0": 3,
+      "1.2.1": 1
+    },
+    "production_batches": {
+      "BATCH-2026-03-001": 3
+    },
+    "product_classes": {
+      "PURPLE_CLASS": 1,
+      "GREEN_CLASS": 1,
+      "BLUE_CLASS": 1,
+      "WHITE_CLASS": 0
+    },
+    "deployment_sites": {
+      "Hospital Central": 3
+    },
+    "operators": {
+      "Juan Perez": 3,
+      "Carlos Martinez": 1
+    }
+  },
+  "metadata": {
+    "database_format": "JSON",
+    "schema_version": "1.0",
+    "backup_schedule": "daily at 00:00 UTC",
+    "last_backup": "2026-03-09T00:00:00Z",
+    "retention_policy_days": 1095,
+    "encryption": "AES-256-GCM",
+    "access_log": "./logs/database_access.log"
+  }
+}
