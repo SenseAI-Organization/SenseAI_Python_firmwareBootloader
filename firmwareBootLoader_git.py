@@ -34,10 +34,10 @@ def check_and_install_dependencies():
         root = tk.Tk()
         root.withdraw()
         
-        msg = f"⚠️ Faltan dependencias requeridas:\n\n"
-        msg += "\n".join(f"  • {pkg}" for pkg in missing_packages)
-        msg += "\n\n¿Deseas instalarlas ahora?\n\n"
-        msg += "Se ejecutará:\n"
+        msg = f"ΓÜá∩╕Å Faltan dependencias requeridas:\n\n"
+        msg += "\n".join(f"  ΓÇó {pkg}" for pkg in missing_packages)
+        msg += "\n\n┬┐Deseas instalarlas ahora?\n\n"
+        msg += "Se ejecutar├í:\n"
         msg += f"  pip install {' '.join(missing_packages)}\n\n"
         msg += "Esto puede tardar 1-2 minutos..."
         
@@ -68,16 +68,16 @@ def check_and_install_dependencies():
                 progress_window.destroy()
                 
                 if result.returncode == 0:
-                    messagebox.showinfo("✅ Éxito", 
+                    messagebox.showinfo("Γ£à ├ëxito", 
                         f"Dependencias instaladas correctamente:\n\n" + 
-                        "\n".join(f"  ✓ {pkg}" for pkg in missing_packages) +
-                        "\n\nLa aplicación se iniciará ahora.")
+                        "\n".join(f"  Γ£ô {pkg}" for pkg in missing_packages) +
+                        "\n\nLa aplicaci├│n se iniciar├í ahora.")
                     root.destroy()
                     # Don't exit, continue to start the app
                     return True
                 else:
                     error_msg = result.stderr if result.stderr else "Error desconocido"
-                    messagebox.showerror("❌ Error", 
+                    messagebox.showerror("Γ¥î Error", 
                         f"Error instalando dependencias:\n\n{error_msg}\n\n" +
                         f"Instala manualmente:\n\n" +
                         f"1. Abre CMD/PowerShell como administrador\n" +
@@ -87,27 +87,27 @@ def check_and_install_dependencies():
                     sys.exit(1)
             except subprocess.TimeoutExpired:
                 progress_window.destroy()
-                messagebox.showerror("⏱️ Timeout", 
-                    "La instalación tomó demasiado tiempo.\n\n" +
+                messagebox.showerror("ΓÅ▒∩╕Å Timeout", 
+                    "La instalaci├│n tom├│ demasiado tiempo.\n\n" +
                     f"Instala manualmente con:\n" +
                     f"pip install {' '.join(missing_packages)}")
                 root.destroy()
                 sys.exit(1)
             except Exception as e:
                 progress_window.destroy()
-                messagebox.showerror("❌ Error", 
+                messagebox.showerror("Γ¥î Error", 
                     f"Error instalando dependencias:\n\n{str(e)}\n\n" +
                     f"Ejecuta install_dependencies.bat\n" +
                     f"o manualmente: pip install {' '.join(missing_packages)}")
                 root.destroy()
                 sys.exit(1)
         else:
-            messagebox.showwarning("⚠️ Advertencia", 
-                "La aplicación no funcionará sin estas dependencias.\n\n" +
+            messagebox.showwarning("ΓÜá∩╕Å Advertencia", 
+                "La aplicaci├│n no funcionar├í sin estas dependencias.\n\n" +
                 "Opciones para instalar:\n\n" +
                 "1. Ejecuta: install_dependencies.bat\n" +
                 "2. O manualmente: pip install -r requirements.txt\n\n" +
-                "Luego vuelve a abrir la aplicación.")
+                "Luego vuelve a abrir la aplicaci├│n.")
             root.destroy()
             sys.exit(1)
     
@@ -143,8 +143,6 @@ class ESP32Flasher:
         self.serial_thread = None
         self.serial_baud = tk.StringVar(value="115200")
         self.serial_port_obj = None  # serial.Serial object
-        self.command_history = []    # Sent command history
-        self.history_index = -1      # Current history navigation index
         
         # ESP-IDF standard addresses (base - adjusted per chip)
         self.esp_idf_addresses = {
@@ -233,7 +231,7 @@ class ESP32Flasher:
         
         main_frame = parent  # Alias for compatibility with existing code
         
-        # Título
+        # T├¡tulo
         title_label = ttk.Label(main_frame, text="ESP32 Firmware Flasher", 
                                font=('Arial', 16, 'bold'))
         title_label.grid(row=0, column=0, pady=10, sticky=(tk.W, tk.E))
@@ -246,24 +244,24 @@ class ESP32Flasher:
         ttk.Radiobutton(mode_frame, text="Simple Mode - Solo firmware.bin", 
                        variable=self.flash_mode, value="simple",
                        command=self.on_mode_change).grid(row=0, column=0, sticky=tk.W, pady=2)
-        ttk.Label(mode_frame, text="   🛡️ SEGURO: Solo actualiza firmware, preserva SIEMPRE bootloader/partitions/NVS", 
+        ttk.Label(mode_frame, text="   ≡ƒ¢í∩╕Å SEGURO: Solo actualiza firmware, preserva SIEMPRE bootloader/partitions/NVS", 
                  foreground="green", font=('Arial', 8, 'bold')).grid(row=1, column=0, sticky=tk.W, padx=20)
         
         ttk.Radiobutton(mode_frame, text="Complete Mode - Bootloader + Partitions + Firmware", 
                        variable=self.flash_mode, value="complete",
                        command=self.on_mode_change).grid(row=2, column=0, sticky=tk.W, pady=(10, 2))
-        ttk.Label(mode_frame, text="   🔧 COMPLETO: Flasheo total como PlatformIO (para chips nuevos o recuperación)", 
+        ttk.Label(mode_frame, text="   ≡ƒöº COMPLETO: Flasheo total como PlatformIO (para chips nuevos o recuperaci├│n)", 
                  foreground="orange", font=('Arial', 8, 'bold')).grid(row=3, column=0, sticky=tk.W, padx=20)
         
         # Info and Analyze buttons
         button_frame = ttk.Frame(mode_frame)
         button_frame.grid(row=0, column=1, rowspan=4, padx=(20, 0), sticky=(tk.N, tk.S))
         
-        info_btn = ttk.Button(button_frame, text="ℹ️ Info\nModos", 
+        info_btn = ttk.Button(button_frame, text="Γä╣∩╕Å Info\nModos", 
                              command=self.show_mode_info, width=15)
         info_btn.pack(pady=2)
         
-        self.analyze_btn = ttk.Button(button_frame, text="🔍 Analizar\nFirmware", 
+        self.analyze_btn = ttk.Button(button_frame, text="≡ƒöì Analizar\nFirmware", 
                                      command=self.show_firmware_analysis, width=15)
         self.analyze_btn.pack(pady=2)
         
@@ -276,30 +274,30 @@ class ESP32Flasher:
         ttk.Label(files_frame, text="Firmware:", font=('Arial', 9, 'bold')).grid(row=0, column=0, sticky=tk.W, pady=5)
         self.firmware_label = ttk.Label(files_frame, text="No seleccionado", foreground="gray")
         self.firmware_label.grid(row=0, column=1, sticky=tk.W, padx=5)
-        self.firmware_btn = ttk.Button(files_frame, text="📁", command=self.select_firmware_file, width=5)
+        self.firmware_btn = ttk.Button(files_frame, text="≡ƒôü", command=self.select_firmware_file, width=5)
         self.firmware_btn.grid(row=0, column=2, padx=2)
         
         # Bootloader file (Complete mode only)
         ttk.Label(files_frame, text="Bootloader:", font=('Arial', 9, 'bold')).grid(row=1, column=0, sticky=tk.W, pady=5)
         self.bootloader_label = ttk.Label(files_frame, text="No requerido (Simple Mode)", foreground="gray")
         self.bootloader_label.grid(row=1, column=1, sticky=tk.W, padx=5)
-        self.bootloader_btn = ttk.Button(files_frame, text="📁", command=self.select_bootloader_file, width=5, state='disabled')
+        self.bootloader_btn = ttk.Button(files_frame, text="≡ƒôü", command=self.select_bootloader_file, width=5, state='disabled')
         self.bootloader_btn.grid(row=1, column=2, padx=2)
         
         # Partitions file (Complete mode only)
         ttk.Label(files_frame, text="Partitions:", font=('Arial', 9, 'bold')).grid(row=2, column=0, sticky=tk.W, pady=5)
         self.partitions_label = ttk.Label(files_frame, text="No requerido (Simple Mode)", foreground="gray")
         self.partitions_label.grid(row=2, column=1, sticky=tk.W, padx=5)
-        self.partitions_btn = ttk.Button(files_frame, text="📁", command=self.select_partitions_file, width=5, state='disabled')
+        self.partitions_btn = ttk.Button(files_frame, text="≡ƒôü", command=self.select_partitions_file, width=5, state='disabled')
         self.partitions_btn.grid(row=2, column=2, padx=2)
         
         # Auto-detect button
-        self.auto_detect_btn = ttk.Button(files_frame, text="🔍 Auto-detectar archivos PlatformIO", 
+        self.auto_detect_btn = ttk.Button(files_frame, text="≡ƒöì Auto-detectar archivos PlatformIO", 
                                          command=self.auto_detect_pio_files, width=50, state='disabled')
         self.auto_detect_btn.grid(row=3, column=0, columnspan=3, pady=5, sticky=(tk.W, tk.E))
         
         # === DEVICE CONFIGURATION ===
-        device_frame = ttk.LabelFrame(main_frame, text="Configuración del Dispositivo", padding="5")
+        device_frame = ttk.LabelFrame(main_frame, text="Configuraci├│n del Dispositivo", padding="5")
         device_frame.grid(row=3, column=0, sticky=(tk.W, tk.E), pady=3, padx=5)
         device_frame.columnconfigure(1, weight=1)
         
@@ -311,10 +309,10 @@ class ESP32Flasher:
         port_buttons_frame = ttk.Frame(device_frame)
         port_buttons_frame.grid(row=0, column=2, padx=5)
         
-        self.refresh_btn = ttk.Button(port_buttons_frame, text="🔄", command=self.refresh_ports, width=5)
+        self.refresh_btn = ttk.Button(port_buttons_frame, text="≡ƒöä", command=self.refresh_ports, width=5)
         self.refresh_btn.pack(side=tk.LEFT, padx=2)
         
-        self.detect_btn = ttk.Button(port_buttons_frame, text="🔍", command=self.detect_device_partitions, width=5)
+        self.detect_btn = ttk.Button(port_buttons_frame, text="≡ƒöì", command=self.detect_device_partitions, width=5)
         self.detect_btn.pack(side=tk.LEFT, padx=2)
         
         # Tipo de chip
@@ -323,7 +321,7 @@ class ESP32Flasher:
         self.chip_combo['values'] = ['esp32', 'esp32s3', 'esp32s2', 'esp32c3', 'esp32c6', 'esp32h2']
         self.chip_combo.grid(row=1, column=1, sticky=(tk.W, tk.E), padx=5)
         
-        chip_info_btn = ttk.Button(device_frame, text="🔍 Info", command=self.show_chip_info, width=10)
+        chip_info_btn = ttk.Button(device_frame, text="≡ƒöì Info", command=self.show_chip_info, width=10)
         chip_info_btn.grid(row=1, column=2, padx=5)
         
         # Baud rate
@@ -344,24 +342,24 @@ class ESP32Flasher:
         nvs_frame.columnconfigure(0, weight=1)
         
         self.preserve_nvs = tk.BooleanVar(value=False)
-        ttk.Checkbutton(nvs_frame, text="🔒 Preservar NVS/WiFi (solo Complete Mode)", 
+        ttk.Checkbutton(nvs_frame, text="≡ƒöÆ Preservar NVS/WiFi (solo Complete Mode)", 
                        variable=self.preserve_nvs).grid(row=0, column=0, sticky=tk.W)
         
         # SPIFFS buttons on the right
         spiffs_button_frame = ttk.Frame(options_frame)
         spiffs_button_frame.grid(row=0, column=1, rowspan=5, padx=(20, 0), sticky=(tk.N, tk.S))
         
-        self.upload_data_btn = ttk.Button(spiffs_button_frame, text="📤 Upload Data\nFolder (SPIFFS)", 
+        self.upload_data_btn = ttk.Button(spiffs_button_frame, text="≡ƒôñ Upload Data\nFolder (SPIFFS)", 
                                          command=self.upload_data_folder, width=15)
         self.upload_data_btn.pack(pady=2)
         
-        self.verify_spiffs_btn = ttk.Button(spiffs_button_frame, text="🔍 Verificar\nSPIFFS", 
+        self.verify_spiffs_btn = ttk.Button(spiffs_button_frame, text="≡ƒöì Verificar\nSPIFFS", 
                                            command=self.verify_spiffs_manual, width=15)
         self.verify_spiffs_btn.pack(pady=2)
         
         # Preserve Bootloader
         self.preserve_bootloader = tk.BooleanVar(value=False)
-        ttk.Checkbutton(options_frame, text="🚫 Preservar Bootloader (solo Complete Mode)", 
+        ttk.Checkbutton(options_frame, text="≡ƒÜ½ Preservar Bootloader (solo Complete Mode)", 
                        variable=self.preserve_bootloader).grid(row=1, column=0, sticky=tk.W, pady=2)
         
         # Verbose mode
@@ -374,12 +372,12 @@ class ESP32Flasher:
         main_buttons_frame.columnconfigure(0, weight=1)
         main_buttons_frame.columnconfigure(1, weight=1)
         
-        self.flash_btn = ttk.Button(main_buttons_frame, text="⚡ FLASHEAR FIRMWARE", 
+        self.flash_btn = ttk.Button(main_buttons_frame, text="ΓÜí FLASHEAR FIRMWARE", 
                                    command=self.start_flash, width=30)
         self.flash_btn.grid(row=0, column=0, padx=5, sticky=(tk.W, tk.E))
         
         # Advanced options toggle
-        self.advanced_btn = ttk.Button(main_buttons_frame, text="⚙️ Opciones Avanzadas", 
+        self.advanced_btn = ttk.Button(main_buttons_frame, text="ΓÜÖ∩╕Å Opciones Avanzadas", 
                                       command=self.toggle_advanced_options, width=25)
         self.advanced_btn.grid(row=0, column=1, padx=5, sticky=(tk.W, tk.E))
         
@@ -394,19 +392,19 @@ class ESP32Flasher:
         for i in range(4):
             advanced_buttons_frame.columnconfigure(i, weight=1)
         
-        self.erase_btn = ttk.Button(advanced_buttons_frame, text="🗑️ BORRAR TODO", 
+        self.erase_btn = ttk.Button(advanced_buttons_frame, text="≡ƒùæ∩╕Å BORRAR TODO", 
                                    command=self.start_erase, width=15)
         self.erase_btn.grid(row=0, column=0, padx=2, sticky=(tk.W, tk.E))
         
-        self.erase_nvs_btn = ttk.Button(advanced_buttons_frame, text="🗑️ BORRAR NVS", 
+        self.erase_nvs_btn = ttk.Button(advanced_buttons_frame, text="≡ƒùæ∩╕Å BORRAR NVS", 
                                        command=self.start_erase_nvs, width=15)
         self.erase_nvs_btn.grid(row=0, column=1, padx=2, sticky=(tk.W, tk.E))
         
-        self.recovery_btn = ttk.Button(advanced_buttons_frame, text="🔧 Flash Bootloader", 
+        self.recovery_btn = ttk.Button(advanced_buttons_frame, text="≡ƒöº Flash Bootloader", 
                                       command=self.flash_bootloader_only, width=15)
         self.recovery_btn.grid(row=0, column=2, padx=2, sticky=(tk.W, tk.E))
         
-        self.fix_bootloader_btn = ttk.Button(advanced_buttons_frame, text="🚑 Fix Header", 
+        self.fix_bootloader_btn = ttk.Button(advanced_buttons_frame, text="≡ƒÜæ Fix Header", 
                                            command=self.fix_invalid_header, width=12)
         self.fix_bootloader_btn.grid(row=0, column=3, padx=2, sticky=(tk.W, tk.E))
         
@@ -431,7 +429,7 @@ class ESP32Flasher:
         # === STATUS LABEL ===
         self.status_label = ttk.Label(log_header_frame, text="Idle", font=('Arial', 9, 'bold'), foreground="blue")
         self.status_label.grid(row=0, column=0, sticky=(tk.W, tk.E))
-        save_log_btn = ttk.Button(log_header_frame, text="💾", command=self.save_log_to_file, width=5)
+        save_log_btn = ttk.Button(log_header_frame, text="≡ƒÆ╛", command=self.save_log_to_file, width=5)
         save_log_btn.grid(row=0, column=1, sticky=tk.E)
         
         self.log_text = scrolledtext.ScrolledText(main_frame, height=12, wrap=tk.WORD, state='disabled')
@@ -448,12 +446,12 @@ class ESP32Flasher:
         if self.show_advanced.get():
             # Hide advanced panel
             self.advanced_frame.grid_remove()
-            self.advanced_btn.config(text="⚙️ Opciones Avanzadas")
+            self.advanced_btn.config(text="ΓÜÖ∩╕Å Opciones Avanzadas")
             self.show_advanced.set(False)
         else:
             # Show advanced panel
             self.advanced_frame.grid(row=6, column=0, sticky=(tk.W, tk.E), pady=5, padx=5)
-            self.advanced_btn.config(text="❌ Ocultar Avanzadas")
+            self.advanced_btn.config(text="Γ¥î Ocultar Avanzadas")
             self.show_advanced.set(True)
         
         # Update scroll region after layout change
@@ -465,8 +463,7 @@ class ESP32Flasher:
         parent.rowconfigure(0, weight=0)  # Debug (fixed size)
         parent.rowconfigure(1, weight=0)  # Serial controls (fixed size)
         parent.rowconfigure(2, weight=1)  # Serial terminal (expands)
-        parent.rowconfigure(3, weight=0)  # Command input (fixed size)
-        parent.rowconfigure(4, weight=0)  # Session info (fixed size)
+        parent.rowconfigure(3, weight=0)  # Session info (fixed size)
         
         # === DEBUG MESSAGES === (smaller)
         debug_label_frame = ttk.Frame(parent)
@@ -474,7 +471,7 @@ class ESP32Flasher:
         debug_label_frame.columnconfigure(0, weight=1)
         
         ttk.Label(debug_label_frame, text="Debug:", font=('Arial', 10, 'bold')).pack(side=tk.LEFT)
-        ttk.Button(debug_label_frame, text="🗑️", command=lambda: self.clear_text(self.debug_text), width=5).pack(side=tk.RIGHT)
+        ttk.Button(debug_label_frame, text="≡ƒùæ∩╕Å", command=lambda: self.clear_text(self.debug_text), width=5).pack(side=tk.RIGHT)
         
         self.debug_text = scrolledtext.ScrolledText(parent, height=6, width=40, state='disabled', 
                                                      wrap=tk.WORD, font=('Consolas', 8))
@@ -488,7 +485,7 @@ class ESP32Flasher:
         controls_frame.columnconfigure(1, weight=1)
         
         # Connect/Disconnect button
-        self.connect_btn = ttk.Button(controls_frame, text="🔌 Connect", command=self.toggle_serial_connection, width=15)
+        self.connect_btn = ttk.Button(controls_frame, text="≡ƒöî Connect", command=self.toggle_serial_connection, width=15)
         self.connect_btn.pack(side=tk.LEFT, padx=(0, 5))
         
         # Baudrate selection
@@ -498,7 +495,7 @@ class ESP32Flasher:
         self.serial_baud_combo.pack(side=tk.LEFT, padx=(0, 5))
         
         # Advanced options button
-        self.serial_advanced_btn = ttk.Button(controls_frame, text="⚙️", command=self.show_serial_advanced, width=5)
+        self.serial_advanced_btn = ttk.Button(controls_frame, text="ΓÜÖ∩╕Å", command=self.show_serial_advanced, width=5)
         self.serial_advanced_btn.pack(side=tk.RIGHT)
         
         # === SERIAL TERMINAL ===
@@ -507,7 +504,7 @@ class ESP32Flasher:
         serial_label_frame.columnconfigure(0, weight=1)
         
         ttk.Label(serial_label_frame, text="Serial Terminal:", font=('Arial', 10, 'bold')).pack(side=tk.LEFT)
-        ttk.Button(serial_label_frame, text="🗑️", command=lambda: self.clear_text(self.serial_text), width=5).pack(side=tk.RIGHT)
+        ttk.Button(serial_label_frame, text="≡ƒùæ∩╕Å", command=lambda: self.clear_text(self.serial_text), width=5).pack(side=tk.RIGHT)
         
         self.serial_text = scrolledtext.ScrolledText(parent, height=12, width=40, state='disabled', 
                                                       wrap=tk.WORD, font=('Consolas', 8))
@@ -516,53 +513,9 @@ class ESP32Flasher:
         self.serial_text.tag_config("rx", foreground="green")
         self.serial_text.tag_config("info", foreground="orange")
         
-        # === COMMAND INPUT ===
-        cmd_frame = ttk.LabelFrame(parent, text="Enviar Comando UART", padding="4")
-        cmd_frame.grid(row=3, column=0, sticky=(tk.W, tk.E), pady=(0, 3))
-        cmd_frame.columnconfigure(0, weight=1)
-        
-        # Line ending selector + send row
-        cmd_top = ttk.Frame(cmd_frame)
-        cmd_top.grid(row=0, column=0, sticky=(tk.W, tk.E))
-        cmd_top.columnconfigure(0, weight=1)
-        
-        self.cmd_entry = ttk.Entry(cmd_top, font=('Consolas', 9))
-        self.cmd_entry.grid(row=0, column=0, sticky=(tk.W, tk.E), padx=(0, 3))
-        self.cmd_entry.bind('<Return>', lambda e: self.send_serial_command())
-        self.cmd_entry.bind('<Up>', self._history_up)
-        self.cmd_entry.bind('<Down>', self._history_down)
-        
-        self.send_cmd_btn = ttk.Button(cmd_top, text="Enviar", command=self.send_serial_command, width=8)
-        self.send_cmd_btn.grid(row=0, column=1)
-        
-        # Line ending selector
-        eol_frame = ttk.Frame(cmd_frame)
-        eol_frame.grid(row=1, column=0, sticky=tk.W, pady=(2, 0))
-        
-        ttk.Label(eol_frame, text="Fin de línea:", font=('Arial', 8)).pack(side=tk.LEFT)
-        self.line_ending = tk.StringVar(value="CRLF")
-        for lbl, val in [("CR+LF", "CRLF"), ("LF", "LF"), ("CR", "CR"), ("Ninguno", "NONE")]:
-            ttk.Radiobutton(eol_frame, text=lbl, variable=self.line_ending,
-                            value=val).pack(side=tk.LEFT, padx=3)
-        
-        # Macro buttons
-        macro_frame = ttk.Frame(cmd_frame)
-        macro_frame.grid(row=2, column=0, sticky=(tk.W, tk.E), pady=(4, 0))
-        
-        macros = [
-            ("restart",  "restart"),
-            ("help",     "help"),
-            ("status",   "status"),
-            ("version",  "version"),
-        ]
-        for label, cmd_text in macros:
-            ttk.Button(macro_frame, text=label,
-                       command=lambda c=cmd_text: self._send_macro(c),
-                       width=8).pack(side=tk.LEFT, padx=2)
-        
         # === SESSION INFO ===
-        session_frame = ttk.LabelFrame(parent, text="Sesión", padding="5")
-        session_frame.grid(row=4, column=0, sticky=(tk.W, tk.E), pady=5)
+        session_frame = ttk.LabelFrame(parent, text="Sesi├│n", padding="5")
+        session_frame.grid(row=3, column=0, sticky=(tk.W, tk.E), pady=5)
         session_frame.columnconfigure(1, weight=1)
         
         # Stats
@@ -574,7 +527,7 @@ class ESP32Flasher:
         self.successful_flashes_label = ttk.Label(session_frame, text="0", foreground="green", font=('Arial', 8))
         self.successful_flashes_label.grid(row=1, column=1, sticky=tk.W)
         
-        ttk.Label(session_frame, text="Únicos:", font=('Arial', 8)).grid(row=2, column=0, sticky=tk.W)
+        ttk.Label(session_frame, text="├Ünicos:", font=('Arial', 8)).grid(row=2, column=0, sticky=tk.W)
         self.unique_devices_label = ttk.Label(session_frame, text="0", foreground="purple", font=('Arial', 8))
         self.unique_devices_label.grid(row=2, column=1, sticky=tk.W)
         
@@ -584,7 +537,7 @@ class ESP32Flasher:
         self.mac_text.grid(row=3, column=0, columnspan=2, sticky=(tk.W, tk.E), pady=2)
         
         # Reset button
-        ttk.Button(session_frame, text="🔄", command=self.reset_session_stats, width=5).grid(row=4, column=0, columnspan=2, pady=2)
+        ttk.Button(session_frame, text="≡ƒöä", command=self.reset_session_stats, width=5).grid(row=4, column=0, columnspan=2, pady=2)
     
     def clear_text(self, text_widget):
         """Clear a text widget"""
@@ -598,7 +551,7 @@ class ESP32Flasher:
         self.successful_flashes = 0
         self.flashed_devices.clear()
         self.update_session_display()
-        self.log_debug("Estadísticas de sesión reiniciadas")
+        self.log_debug("Estad├¡sticas de sesi├│n reiniciadas")
     
     def update_session_display(self):
         """Update session statistics display"""
@@ -686,7 +639,7 @@ class ESP32Flasher:
     
     def log_serial(self, message, direction="rx"):
         """Log serial communication to debug panel (for esptool communication)"""
-        prefix = "→ TX:" if direction == "tx" else "← RX:"
+        prefix = "ΓåÆ TX:" if direction == "tx" else "ΓåÉ RX:"
         self.debug_text.config(state='normal')
         self.debug_text.insert(tk.END, f"{prefix} {message}\n", "verbose")
         self.debug_text.see(tk.END)
@@ -727,7 +680,7 @@ class ESP32Flasher:
             )
             
             self.serial_connected = True
-            self.connect_btn.config(text="🔌 Disconnect")
+            self.connect_btn.config(text="≡ƒöî Disconnect")
             self.serial_baud_combo.config(state='disabled')
             self.write_to_serial_terminal(f"Connected to {port_name} at {baud_rate} baud\n", "info")
             self.log_debug(f"Serial connected to {port_name}@{baud_rate}")
@@ -746,7 +699,7 @@ class ESP32Flasher:
         if self.serial_port_obj and self.serial_port_obj.is_open:
             self.serial_port_obj.close()
         
-        self.connect_btn.config(text="🔌 Connect")
+        self.connect_btn.config(text="≡ƒöî Connect")
         self.serial_baud_combo.config(state='readonly')
         self.write_to_serial_terminal("Disconnected\n", "info")
         self.log_debug("Serial disconnected")
@@ -775,70 +728,6 @@ class ESP32Flasher:
                     self.write_to_serial_terminal(f"Read error: {e}\n", "info")
                 break
     
-    # ------------------------------------------------------------------ #
-    #  UART command sending                                                #
-    # ------------------------------------------------------------------ #
-
-    def _build_line_ending(self):
-        """Return the bytes that should be appended to every outgoing command."""
-        endings = {"CRLF": b"\r\n", "LF": b"\n", "CR": b"\r", "NONE": b""}
-        return endings.get(self.line_ending.get(), b"\r\n")
-
-    def _send_to_serial(self, text: str):
-        """Write *text* (plus the selected line ending) to the open serial port."""
-        if not self.serial_connected or not self.serial_port_obj or not self.serial_port_obj.is_open:
-            messagebox.showwarning("No conectado", "Conecta al puerto serial antes de enviar comandos.")
-            return
-        try:
-            payload = text.encode('utf-8') + self._build_line_ending()
-            self.serial_port_obj.write(payload)
-            self.write_to_serial_terminal(f"> {text}\n", "tx")
-            self.log_debug(f"TX: {text!r}")
-        except Exception as e:
-            self.write_to_serial_terminal(f"[Error TX: {e}]\n", "info")
-            self.log_debug(f"TX error: {e}")
-
-    def send_serial_command(self):
-        """Send the text in the command entry box."""
-        text = self.cmd_entry.get().strip()
-        if not text:
-            return
-        # Add to history (avoid duplicates at top)
-        if not self.command_history or self.command_history[-1] != text:
-            self.command_history.append(text)
-        self.history_index = -1  # Reset navigation
-        self.cmd_entry.delete(0, tk.END)
-        self._send_to_serial(text)
-
-    def _send_macro(self, command: str):
-        """Send a predefined macro command."""
-        self.cmd_entry.delete(0, tk.END)
-        self.cmd_entry.insert(0, command)
-        self.send_serial_command()
-
-    def _history_up(self, event=None):
-        """Navigate command history upward (older commands)."""
-        if not self.command_history:
-            return
-        if self.history_index == -1:
-            self.history_index = len(self.command_history) - 1
-        elif self.history_index > 0:
-            self.history_index -= 1
-        self.cmd_entry.delete(0, tk.END)
-        self.cmd_entry.insert(0, self.command_history[self.history_index])
-
-    def _history_down(self, event=None):
-        """Navigate command history downward (more recent commands)."""
-        if not self.command_history or self.history_index == -1:
-            return
-        if self.history_index < len(self.command_history) - 1:
-            self.history_index += 1
-            self.cmd_entry.delete(0, tk.END)
-            self.cmd_entry.insert(0, self.command_history[self.history_index])
-        else:
-            self.history_index = -1
-            self.cmd_entry.delete(0, tk.END)
-
     def show_serial_advanced(self):
         """Show advanced serial options dialog"""
         # Simple dialog for now - can be expanded
@@ -870,7 +759,7 @@ class ESP32Flasher:
     def install_mkspiffs(self):
         """UI handler: install mkspiffs into repo tools/ using background thread."""
         if self.is_flashing:
-            messagebox.showwarning("Ocupado", "No se puede instalar mientras hay una operación en progreso")
+            messagebox.showwarning("Ocupado", "No se puede instalar mientras hay una operaci├│n en progreso")
             return
 
         thread = threading.Thread(target=self._install_mkspiffs_thread)
@@ -886,15 +775,15 @@ class ESP32Flasher:
             os.makedirs(tools_dir, exist_ok=True)
             dest = os.path.join(tools_dir, 'mkspiffs.exe')
 
-            self.log("📥 Instalando mkspiffs en carpeta tools/...", "info")
+            self.log("≡ƒôÑ Instalando mkspiffs en carpeta tools/...", "info")
             self.log_debug(f"Destino mkspiffs: {dest}")
 
             try:
                 self._download_mkspiffs(dest)
-                self.log("✅ mkspiffs instalado correctamente", "success")
-                messagebox.showinfo("Instalación completada", f"mkspiffs fue instalado en:\n{dest}")
+                self.log("Γ£à mkspiffs instalado correctamente", "success")
+                messagebox.showinfo("Instalaci├│n completada", f"mkspiffs fue instalado en:\n{dest}")
             except Exception as e:
-                self.log(f"❌ Error instalando mkspiffs: {e}", "error")
+                self.log(f"Γ¥î Error instalando mkspiffs: {e}", "error")
                 messagebox.showerror("Error", f"No se pudo instalar mkspiffs:\n{e}")
 
         finally:
@@ -952,7 +841,7 @@ class ESP32Flasher:
                     for mac in sorted(self.flashed_devices):
                         f.write(f"  {mac}\n")
             
-            messagebox.showinfo("Éxito", f"Log guardado exitosamente:\n\n{filepath}")
+            messagebox.showinfo("├ëxito", f"Log guardado exitosamente:\n\n{filepath}")
             self.log(f"Log guardado en: {filepath}", "success")
             self.log_debug(f"Log file saved: {filepath}")
             
@@ -963,59 +852,59 @@ class ESP32Flasher:
     def show_mode_info(self):
         """Show detailed information about flash modes in popup"""
         info_text = """
-📘 GUÍA DE MODOS DE FLASHEO
+≡ƒôÿ GU├ìA DE MODOS DE FLASHEO
 
-🔒 SIMPLE MODE (Modo Seguro)
-• Usa esto para: Actualizaciones rápidas de firmware
-• Flashea: SOLO el archivo firmware.bin
-• Preserva: Bootloader + Partitions + NVS (WiFi/config)
-• Dirección: 0x10000 (estándar PlatformIO)
-• Borrado: Solo la región del firmware
-• Seguridad: 🟢 MUY SEGURO - no puede borrar bootloader
-• Tiempo: Rápido (~30 segundos)
+≡ƒöÆ SIMPLE MODE (Modo Seguro)
+ΓÇó Usa esto para: Actualizaciones r├ípidas de firmware
+ΓÇó Flashea: SOLO el archivo firmware.bin
+ΓÇó Preserva: Bootloader + Partitions + NVS (WiFi/config)
+ΓÇó Direcci├│n: 0x10000 (est├índar PlatformIO)
+ΓÇó Borrado: Solo la regi├│n del firmware
+ΓÇó Seguridad: ≡ƒƒó MUY SEGURO - no puede borrar bootloader
+ΓÇó Tiempo: R├ípido (~30 segundos)
 
-🔧 COMPLETE MODE (Modo Completo)
-• Usa esto para: Chips nuevos, recuperación, cambio de particiones
-• Flashea: bootloader.bin + partitions.bin + firmware.bin
-• Preserva: Nada por defecto (puedes marcar checkboxes)
-• Borrado: Todo el chip (o solo NVS si marcas opciones)
-• Seguridad: 🟠 CUIDADO - puede borrar todo
-• Tiempo: Más lento (~1-2 minutos)
+≡ƒöº COMPLETE MODE (Modo Completo)
+ΓÇó Usa esto para: Chips nuevos, recuperaci├│n, cambio de particiones
+ΓÇó Flashea: bootloader.bin + partitions.bin + firmware.bin
+ΓÇó Preserva: Nada por defecto (puedes marcar checkboxes)
+ΓÇó Borrado: Todo el chip (o solo NVS si marcas opciones)
+ΓÇó Seguridad: ≡ƒƒá CUIDADO - puede borrar todo
+ΓÇó Tiempo: M├ís lento (~1-2 minutos)
 
-✅ OPCIONES DISPONIBLES:
+Γ£à OPCIONES DISPONIBLES:
 
-🔒 Preservar NVS/WiFi:
-   • Mantiene credenciales WiFi y configuraciones
-   • Útil cuando actualizas firmware pero no quieres reconfigurar
-   • Solo funciona en Complete Mode
+≡ƒöÆ Preservar NVS/WiFi:
+   ΓÇó Mantiene credenciales WiFi y configuraciones
+   ΓÇó ├Ütil cuando actualizas firmware pero no quieres reconfigurar
+   ΓÇó Solo funciona en Complete Mode
 
-🚫 Preservar Bootloader:
-   • No reflashea el bootloader existente
-   • Útil cuando solo quieres actualizar partitions.bin + firmware.bin
-   • Ejemplo: Cambiaste tamaño de particiones pero bootloader está bien
-   • Solo funciona en Complete Mode
+≡ƒÜ½ Preservar Bootloader:
+   ΓÇó No reflashea el bootloader existente
+   ΓÇó ├Ütil cuando solo quieres actualizar partitions.bin + firmware.bin
+   ΓÇó Ejemplo: Cambiaste tama├▒o de particiones pero bootloader est├í bien
+   ΓÇó Solo funciona en Complete Mode
 
-⚠️ CASOS DE USO COMUNES:
+ΓÜá∩╕Å CASOS DE USO COMUNES:
 
-1️⃣ Actualizar firmware regularmente:
-   ➡️ Usa SIMPLE MODE
+1∩╕ÅΓâú Actualizar firmware regularmente:
+   Γ₧í∩╕Å Usa SIMPLE MODE
    
-2️⃣ Chip nuevo sin programar:
-   ➡️ Usa COMPLETE MODE (todas las opciones desmarcadas)
+2∩╕ÅΓâú Chip nuevo sin programar:
+   Γ₧í∩╕Å Usa COMPLETE MODE (todas las opciones desmarcadas)
    
-3️⃣ Cambiar tabla de particiones:
-   ➡️ Usa COMPLETE MODE + marca "Preservar Bootloader" + "Preservar NVS"
+3∩╕ÅΓâú Cambiar tabla de particiones:
+   Γ₧í∩╕Å Usa COMPLETE MODE + marca "Preservar Bootloader" + "Preservar NVS"
    
-4️⃣ Chip bricked/corrupto:
-   ➡️ Usa COMPLETE MODE (todas las opciones desmarcadas)
+4∩╕ÅΓâú Chip bricked/corrupto:
+   Γ₧í∩╕Å Usa COMPLETE MODE (todas las opciones desmarcadas)
    
-5️⃣ Actualizar firmware sin perder WiFi:
-   ➡️ Usa SIMPLE MODE (preserva WiFi automáticamente)
+5∩╕ÅΓâú Actualizar firmware sin perder WiFi:
+   Γ₧í∩╕Å Usa SIMPLE MODE (preserva WiFi autom├íticamente)
 """
         
         # Create popup window
         info_window = tk.Toplevel(self.root)
-        info_window.title("📘 Guía de Modos de Flasheo")
+        info_window.title("≡ƒôÿ Gu├¡a de Modos de Flasheo")
         info_window.geometry("700x650")
         
         # Center window
@@ -1111,7 +1000,7 @@ class ESP32Flasher:
                 bin_path = self.convert_csv_to_bin(filename)
                 if bin_path:
                     self.partitions_path = bin_path
-                    self.partitions_label.config(text=f"{os.path.basename(filename)} → .bin", foreground="green")
+                    self.partitions_label.config(text=f"{os.path.basename(filename)} ΓåÆ .bin", foreground="green")
                     self.log(f"Partitions CSV convertido: {os.path.basename(filename)}", "success")
                 else:
                     messagebox.showerror("Error", "No se pudo convertir el CSV a formato binario")
@@ -1136,7 +1025,7 @@ class ESP32Flasher:
         for candidate in bootloader_candidates:
             if os.path.exists(candidate):
                 self.bootloader_path = candidate
-                self.bootloader_label.config(text=f"✓ {os.path.basename(candidate)} (auto-detectado)", 
+                self.bootloader_label.config(text=f"Γ£ô {os.path.basename(candidate)} (auto-detectado)", 
                                             foreground="green")
                 self.log(f"Bootloader auto-detectado: {candidate}", "success")
                 break
@@ -1152,7 +1041,7 @@ class ESP32Flasher:
         for candidate in partitions_candidates:
             if os.path.exists(candidate):
                 self.partitions_path = candidate
-                self.partitions_label.config(text=f"✓ {os.path.basename(candidate)} (auto-detectado)", 
+                self.partitions_label.config(text=f"Γ£ô {os.path.basename(candidate)} (auto-detectado)", 
                                             foreground="green")
                 self.log(f"Partition table auto-detectada: {candidate}", "success")
                 break
@@ -1180,9 +1069,9 @@ class ESP32Flasher:
                             self.bootloader_path = bl
                             self.partitions_path = pt
                             
-                            self.firmware_label.config(text=f"✓ {os.path.basename(fw)}", foreground="green")
-                            self.bootloader_label.config(text=f"✓ {os.path.basename(bl)}", foreground="green")
-                            self.partitions_label.config(text=f"✓ {os.path.basename(pt)}", foreground="green")
+                            self.firmware_label.config(text=f"Γ£ô {os.path.basename(fw)}", foreground="green")
+                            self.bootloader_label.config(text=f"Γ£ô {os.path.basename(bl)}", foreground="green")
+                            self.partitions_label.config(text=f"Γ£ô {os.path.basename(pt)}", foreground="green")
                             
                             self.log(f"Archivos PlatformIO detectados en: {board_path}", "success")
                             found = True
@@ -1207,7 +1096,7 @@ class ESP32Flasher:
         
         # Show progress window
         progress_window = tk.Toplevel(self.root)
-        progress_window.title("Obteniendo información del chip...")
+        progress_window.title("Obteniendo informaci├│n del chip...")
         progress_window.geometry("400x100")
         progress_window.transient(self.root)
         progress_window.grab_set()
@@ -1241,7 +1130,7 @@ class ESP32Flasher:
             
             # Combine outputs
             full_output = "=" * 70 + "\n"
-            full_output += "INFORMACIÓN DEL CHIP ESP32\n"
+            full_output += "INFORMACI├ôN DEL CHIP ESP32\n"
             full_output += "=" * 70 + "\n\n"
             
             if result.returncode == 0:
@@ -1295,7 +1184,7 @@ class ESP32Flasher:
             
             # Create popup window with info
             info_window = tk.Toplevel(self.root)
-            info_window.title(f"Información del Chip - {port}")
+            info_window.title(f"Informaci├│n del Chip - {port}")
             info_window.geometry("800x600")
             
             # Center window
@@ -1327,30 +1216,30 @@ class ESP32Flasher:
             def copy_to_clipboard():
                 info_window.clipboard_clear()
                 info_window.clipboard_append(full_output)
-                messagebox.showinfo("Copiado", "Información copiada al portapapeles", parent=info_window)
+                messagebox.showinfo("Copiado", "Informaci├│n copiada al portapapeles", parent=info_window)
             
-            copy_btn = ttk.Button(button_frame, text="📋 Copiar Todo", command=copy_to_clipboard)
+            copy_btn = ttk.Button(button_frame, text="≡ƒôï Copiar Todo", command=copy_to_clipboard)
             copy_btn.pack(side='left', padx=5)
             
             close_btn = ttk.Button(button_frame, text="Cerrar", command=info_window.destroy)
             close_btn.pack(side='right', padx=5)
             
-            self.log(f"Información del chip obtenida para {port}", "success")
+            self.log(f"Informaci├│n del chip obtenida para {port}", "success")
             self.log_debug(f"Chip info window opened")
             
         except subprocess.TimeoutExpired:
             progress_window.destroy()
             messagebox.showerror("Timeout", 
-                f"No se pudo obtener información del chip.\n\n"
+                f"No se pudo obtener informaci├│n del chip.\n\n"
                 f"Verifica que:\n"
-                f"• El chip esté conectado correctamente\n"
-                f"• El puerto COM sea correcto\n"
-                f"• El chip no esté siendo usado por otro programa")
+                f"ΓÇó El chip est├⌐ conectado correctamente\n"
+                f"ΓÇó El puerto COM sea correcto\n"
+                f"ΓÇó El chip no est├⌐ siendo usado por otro programa")
             self.log("Timeout obteniendo chip info", "error")
             
         except Exception as e:
             progress_window.destroy()
-            messagebox.showerror("Error", f"Error obteniendo información del chip:\n\n{str(e)}")
+            messagebox.showerror("Error", f"Error obteniendo informaci├│n del chip:\n\n{str(e)}")
             self.log(f"Error en show_chip_info: {e}", "error")
             self.log_debug(f"Exception: {repr(e)}")
 
@@ -1366,7 +1255,7 @@ class ESP32Flasher:
         
         if not self.bootloader_path or not os.path.exists(self.bootloader_path):
             messagebox.showerror("Error", 
-                "No se encontró el bootloader.\n\n"
+                "No se encontr├│ el bootloader.\n\n"
                 "Verifica que el archivo bootloader.bin exista en la carpeta firmware/")
             return
         
@@ -1377,14 +1266,14 @@ class ESP32Flasher:
         
         confirm = messagebox.askyesno(
             "Confirmar Flash de Bootloader",
-            f"🔧 MODO DE RECUPERACIÓN\n\n"
-            f"Se flasheará SOLO el bootloader en:\n"
-            f"• Puerto: {port}\n"
-            f"• Chip: {chip}\n"
-            f"• Dirección: {bootloader_addr}\n"
-            f"• Archivo: {os.path.basename(self.bootloader_path)}\n\n"
-            f"Esta operación puede recuperar chips con 'invalid header' error.\n\n"
-            f"¿Continuar?"
+            f"≡ƒöº MODO DE RECUPERACI├ôN\n\n"
+            f"Se flashear├í SOLO el bootloader en:\n"
+            f"ΓÇó Puerto: {port}\n"
+            f"ΓÇó Chip: {chip}\n"
+            f"ΓÇó Direcci├│n: {bootloader_addr}\n"
+            f"ΓÇó Archivo: {os.path.basename(self.bootloader_path)}\n\n"
+            f"Esta operaci├│n puede recuperar chips con 'invalid header' error.\n\n"
+            f"┬┐Continuar?"
         )
         
         if not confirm:
@@ -1392,11 +1281,11 @@ class ESP32Flasher:
             return
         
         self.log("=" * 60, "info")
-        self.log("🔧 INICIANDO FLASH DE BOOTLOADER SOLO (RECOVERY MODE)", "info")
+        self.log("≡ƒöº INICIANDO FLASH DE BOOTLOADER SOLO (RECOVERY MODE)", "info")
         self.log("=" * 60, "info")
         self.log(f"Puerto: {port}", "info")
         self.log(f"Chip: {chip}", "info")
-        self.log(f"Bootloader: {bootloader_addr} → {os.path.basename(self.bootloader_path)}", "info")
+        self.log(f"Bootloader: {bootloader_addr} ΓåÆ {os.path.basename(self.bootloader_path)}", "info")
         
         # Start flashing in thread
         thread = threading.Thread(
@@ -1456,17 +1345,17 @@ class ESP32Flasher:
                     
                     # Update status label
                     if "Connecting" in line:
-                        self.status_label.config(text="🔌 Connecting to device...")
+                        self.status_label.config(text="≡ƒöî Connecting to device...")
                     elif "Erasing" in line or "erase" in line.lower():
-                        self.status_label.config(text="🗑️ Erasing flash...")
+                        self.status_label.config(text="≡ƒùæ∩╕Å Erasing flash...")
                     elif "Writing at" in line:
-                        self.status_label.config(text="📤 Uploading bootloader...")
+                        self.status_label.config(text="≡ƒôñ Uploading bootloader...")
                     elif "Hash of data verified" in line:
-                        self.status_label.config(text="✅ Verifying bootloader...")
+                        self.status_label.config(text="Γ£à Verifying bootloader...")
                     elif "Compressed" in line:
-                        self.status_label.config(text="📦 Compressing bootloader...")
+                        self.status_label.config(text="≡ƒôª Compressing bootloader...")
                     elif "Uploading" in line:
-                        self.status_label.config(text="📤 Uploading stub...")
+                        self.status_label.config(text="≡ƒôñ Uploading stub...")
                     
                     self.log_debug(f"esptool: {line}")
                     
@@ -1478,28 +1367,28 @@ class ESP32Flasher:
             
             if process.returncode == 0:
                 self.log("=" * 60, "success")
-                self.log("✅ BOOTLOADER FLASHEADO CORRECTAMENTE", "success")
+                self.log("Γ£à BOOTLOADER FLASHEADO CORRECTAMENTE", "success")
                 self.log("=" * 60, "success")
-                self.log("El chip debería reiniciarse automáticamente", "info")
+                self.log("El chip deber├¡a reiniciarse autom├íticamente", "info")
                 self.log("Si persiste 'invalid header', verifica particiones y firmware", "info")
                 messagebox.showinfo(
-                    "Éxito",
-                    "✅ Bootloader flasheado correctamente\n\n"
-                    "El chip debería reiniciarse automáticamente.\n"
-                    "Si aún muestra 'invalid header', verifica que\n"
-                    "las particiones y el firmware estén flasheados."
+                    "├ëxito",
+                    "Γ£à Bootloader flasheado correctamente\n\n"
+                    "El chip deber├¡a reiniciarse autom├íticamente.\n"
+                    "Si a├║n muestra 'invalid header', verifica que\n"
+                    "las particiones y el firmware est├⌐n flasheados."
                 )
             else:
-                self.log(f"Error: esptool retornó código {process.returncode}", "error")
+                self.log(f"Error: esptool retorn├│ c├│digo {process.returncode}", "error")
                 messagebox.showerror(
                     "Error",
                     f"Error flasheando bootloader.\n\n"
-                    f"Código de error: {process.returncode}\n\n"
-                    f"Revisa el log para más detalles."
+                    f"C├│digo de error: {process.returncode}\n\n"
+                    f"Revisa el log para m├ís detalles."
                 )
         
         except Exception as e:
-            self.log(f"❌ ERROR flasheando bootloader: {e}", "error")
+            self.log(f"Γ¥î ERROR flasheando bootloader: {e}", "error")
             self.log_debug(f"Exception: {repr(e)}")
             messagebox.showerror("Error", f"Error flasheando bootloader:\n\n{str(e)}")
         
@@ -1509,14 +1398,14 @@ class ESP32Flasher:
             self.log_debug("Flash de bootloader finalizado")
 
     def get_valid_bootloader(self):
-        """Obtener un bootloader válido para ESP32-S3, crear uno si es necesario"""
+        """Obtener un bootloader v├ílido para ESP32-S3, crear uno si es necesario"""
         try:
-            # 1. Verificar si ya tenemos uno válido
+            # 1. Verificar si ya tenemos uno v├ílido
             if self.bootloader_path and os.path.exists(self.bootloader_path):
                 with open(self.bootloader_path, 'rb') as f:
                     header = f.read(16)
-                if len(header) >= 16 and header[0] == 0xE9:  # Magic byte válido
-                    self.log("✅ Bootloader existente es válido", "success")
+                if len(header) >= 16 and header[0] == 0xE9:  # Magic byte v├ílido
+                    self.log("Γ£à Bootloader existente es v├ílido", "success")
                     return self.bootloader_path
             
             # 2. Buscar bootloader en carpeta firmware/
@@ -1533,12 +1422,12 @@ class ESP32Flasher:
                     with open(bootloader_file, 'rb') as f:
                         header = f.read(16)
                     if len(header) >= 16 and header[0] == 0xE9:
-                        self.log(f"✅ Bootloader válido encontrado: {bootloader_name}", "success")
+                        self.log(f"Γ£à Bootloader v├ílido encontrado: {bootloader_name}", "success")
                         self.bootloader_path = bootloader_file
                         return bootloader_file
             
             # 3. Intentar usar esptool para obtener un bootloader de referencia
-            self.log("🔍 Buscando bootloader de referencia con esptool...", "info")
+            self.log("≡ƒöì Buscando bootloader de referencia con esptool...", "info")
             try:
                 import esptool
                 # Intentar obtener bootloader desde el chip conectado
@@ -1557,11 +1446,11 @@ class ESP32Flasher:
                     
                     result = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
                     if result.returncode == 0 and os.path.exists(temp_bootloader):
-                        # Verificar si el bootloader leído es válido
+                        # Verificar si el bootloader le├¡do es v├ílido
                         with open(temp_bootloader, 'rb') as f:
                             header = f.read(16)
                         if len(header) >= 16 and header[0] == 0xE9:
-                            self.log("✅ Bootloader extraído del chip es válido", "success")
+                            self.log("Γ£à Bootloader extra├¡do del chip es v├ílido", "success")
                             # Copiarlo a la carpeta firmware
                             dest_bootloader = os.path.join(firmware_dir, "extracted_bootloader.bin")
                             os.makedirs(firmware_dir, exist_ok=True)
@@ -1572,8 +1461,8 @@ class ESP32Flasher:
             except:
                 pass
             
-            # 4. Como último recurso, crear uno básico
-            self.log("🔧 Generando bootloader básico para ESP32-S3...", "warning")
+            # 4. Como ├║ltimo recurso, crear uno b├ísico
+            self.log("≡ƒöº Generando bootloader b├ísico para ESP32-S3...", "warning")
             bootloader_file = self.create_esp32s3_bootloader()
             if bootloader_file and os.path.exists(bootloader_file):
                 # Copiarlo a la carpeta firmware
@@ -1582,13 +1471,13 @@ class ESP32Flasher:
                 with open(bootloader_file, 'rb') as src, open(dest_bootloader, 'wb') as dst:
                     dst.write(src.read())
                 self.bootloader_path = dest_bootloader
-                self.log("⚠️ Usando bootloader generado básico - puede requerir ajustes", "warning")
+                self.log("ΓÜá∩╕Å Usando bootloader generado b├ísico - puede requerir ajustes", "warning")
                 return dest_bootloader
             
             return None
             
         except Exception as e:
-            self.log(f"❌ Error obteniendo bootloader válido: {e}", "error")
+            self.log(f"Γ¥î Error obteniendo bootloader v├ílido: {e}", "error")
             return None
 
     def fix_invalid_header(self):
@@ -1602,16 +1491,16 @@ class ESP32Flasher:
             return
         
         # Confirm the fix
-        msg = ("🚑 REPARACIÓN DE INVALID HEADER\n\n"
-               "Esta función intentará reparar el error 'invalid header: 0xffffffff'\n"
+        msg = ("≡ƒÜæ REPARACI├ôN DE INVALID HEADER\n\n"
+               "Esta funci├│n intentar├í reparar el error 'invalid header: 0xffffffff'\n"
                "realizando las siguientes acciones:\n\n"
                "1. Borrar completamente la memoria flash\n"
-               "2. Obtener/crear un bootloader válido para ESP32-S3\n"
+               "2. Obtener/crear un bootloader v├ílido para ESP32-S3\n"
                "3. Flashear bootloader + particiones + firmware\n\n"
-               "⚠️ ADVERTENCIA: Esto borrará TODOS los datos del chip.\n"
-               "¿Continuar con la reparación?")
+               "ΓÜá∩╕Å ADVERTENCIA: Esto borrar├í TODOS los datos del chip.\n"
+               "┬┐Continuar con la reparaci├│n?")
         
-        if not messagebox.askyesno("Confirmar Reparación", msg):
+        if not messagebox.askyesno("Confirmar Reparaci├│n", msg):
             return
         
         # Start repair process in thread
@@ -1629,11 +1518,11 @@ class ESP32Flasher:
             chip = self.selected_chip.get()
             python_exe = self._get_subprocess_python()
             
-            self.log("🚑 INICIANDO REPARACIÓN DE INVALID HEADER", "info")
+            self.log("≡ƒÜæ INICIANDO REPARACI├ôN DE INVALID HEADER", "info")
             self.log("=" * 50, "info")
             
             # Step 1: Erase flash completely
-            self.log("🗑️ Paso 1/4: Borrando memoria flash completa...", "info")
+            self.log("≡ƒùæ∩╕Å Paso 1/4: Borrando memoria flash completa...", "info")
             erase_cmd = [
                 python_exe, "-m", "esptool",
                 "--chip", chip,
@@ -1646,37 +1535,37 @@ class ESP32Flasher:
             if result.returncode != 0:
                 raise Exception(f"Error borrando flash: {result.stderr}")
             
-            self.log("✅ Flash borrada completamente", "success")
+            self.log("Γ£à Flash borrada completamente", "success")
             
             # Step 2: Get valid bootloader
-            self.log("🔧 Paso 2/4: Obteniendo bootloader válido...", "info")
+            self.log("≡ƒöº Paso 2/4: Obteniendo bootloader v├ílido...", "info")
             bootloader_file = self.get_valid_bootloader()
             if not bootloader_file:
-                raise Exception("No se pudo obtener un bootloader válido")
+                raise Exception("No se pudo obtener un bootloader v├ílido")
             
-            self.log(f"✅ Bootloader válido: {os.path.basename(bootloader_file)}", "success")
+            self.log(f"Γ£à Bootloader v├ílido: {os.path.basename(bootloader_file)}", "success")
             
             # Step 3: Ensure we have partitions
-            self.log("📊 Paso 3/4: Verificando tabla de particiones...", "info")
+            self.log("≡ƒôè Paso 3/4: Verificando tabla de particiones...", "info")
             if not self.partitions_path or not os.path.exists(self.partitions_path):
                 # Try to find partitions.csv in firmware folder
                 firmware_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "firmware")
                 partitions_file = os.path.join(firmware_dir, "partitions.csv")
                 if os.path.exists(partitions_file):
                     self.partitions_path = partitions_file
-                    self.log(f"✅ Encontradas particiones: {os.path.basename(partitions_file)}", "success")
+                    self.log(f"Γ£à Encontradas particiones: {os.path.basename(partitions_file)}", "success")
                 else:
                     # Create a default partition table
-                    self.log("⚠️ No se encontró tabla de particiones, creando una por defecto...", "warning")
+                    self.log("ΓÜá∩╕Å No se encontr├│ tabla de particiones, creando una por defecto...", "warning")
                     default_partitions = self._create_default_partition_table(firmware_dir)
                     if default_partitions:
                         self.partitions_path = default_partitions
-                        self.log(f"✅ Tabla de particiones por defecto creada: {os.path.basename(default_partitions)}", "success")
+                        self.log(f"Γ£à Tabla de particiones por defecto creada: {os.path.basename(default_partitions)}", "success")
                     else:
-                        raise Exception("No se pudo crear tabla de particiones válida")
+                        raise Exception("No se pudo crear tabla de particiones v├ílida")
             
             # Step 4: Flash everything (bootloader + partitions + firmware)
-            self.log("⚡ Paso 4/4: Flasheando bootloader + particiones + firmware...", "info")
+            self.log("ΓÜí Paso 4/4: Flasheando bootloader + particiones + firmware...", "info")
             
             # Prepare flash command
             flash_cmd = [
@@ -1707,7 +1596,7 @@ class ESP32Flasher:
             
             # Add firmware
             if not self.firmware_path or not os.path.exists(self.firmware_path):
-                raise Exception("No se seleccionó archivo de firmware")
+                raise Exception("No se seleccion├│ archivo de firmware")
             
             # Get correct firmware address from partition table
             firmware_addr, has_ota = self.parse_partition_table_file(self.partitions_path)
@@ -1719,22 +1608,22 @@ class ESP32Flasher:
             result = subprocess.run(flash_cmd, capture_output=True, text=True, timeout=300)
             
             if result.returncode == 0:
-                self.log("🎉 REPARACIÓN COMPLETADA EXITOSAMENTE!", "success")
+                self.log("≡ƒÄë REPARACI├ôN COMPLETADA EXITOSAMENTE!", "success")
                 self.log("=" * 50, "success")
-                self.log("El chip debería arrancar correctamente ahora.", "success")
-                messagebox.showinfo("Reparación Exitosa", 
-                    "✅ Reparación completada exitosamente!\n\n"
-                    "El ESP32-S3 debería arrancar correctamente ahora.\n"
+                self.log("El chip deber├¡a arrancar correctamente ahora.", "success")
+                messagebox.showinfo("Reparaci├│n Exitosa", 
+                    "Γ£à Reparaci├│n completada exitosamente!\n\n"
+                    "El ESP32-S3 deber├¡a arrancar correctamente ahora.\n"
                     "Puedes desconectar y reconectar el dispositivo.")
             else:
                 raise Exception(f"Error en flasheo: {result.stderr}")
                 
         except subprocess.TimeoutExpired:
-            self.log("❌ TIMEOUT en reparación", "error")
-            messagebox.showerror("Timeout", "La reparación tomó demasiado tiempo. Verifica la conexión.")
+            self.log("Γ¥î TIMEOUT en reparaci├│n", "error")
+            messagebox.showerror("Timeout", "La reparaci├│n tom├│ demasiado tiempo. Verifica la conexi├│n.")
         except Exception as e:
-            self.log(f"❌ ERROR en reparación: {e}", "error")
-            messagebox.showerror("Error de Reparación", f"Error durante la reparación:\n\n{str(e)}")
+            self.log(f"Γ¥î ERROR en reparaci├│n: {e}", "error")
+            messagebox.showerror("Error de Reparaci├│n", f"Error durante la reparaci├│n:\n\n{str(e)}")
         finally:
             self.is_flashing = False
             self.set_buttons_state('normal')
@@ -1759,17 +1648,17 @@ spiffs,      data, spiffs,  0x2A0000, 1472K
             with open(partitions_file, 'w') as f:
                 f.write(default_csv)
             
-            self.log("📝 Tabla de particiones por defecto creada con configuración OTA", "info")
+            self.log("≡ƒô¥ Tabla de particiones por defecto creada con configuraci├│n OTA", "info")
             return partitions_file
             
         except Exception as e:
-            self.log(f"❌ Error creando tabla de particiones por defecto: {e}", "error")
+            self.log(f"Γ¥î Error creando tabla de particiones por defecto: {e}", "error")
             return None
 
     def upload_data_folder(self):
         """Upload data folder to SPIFFS partition (similar to PlatformIO uploadfs)"""
         if self.is_flashing:
-            messagebox.showwarning("Ocupado", "Ya hay una operación en progreso")
+            messagebox.showwarning("Ocupado", "Ya hay una operaci├│n en progreso")
             return
         
         if not self.selected_port.get():
@@ -1780,7 +1669,7 @@ spiffs,      data, spiffs,  0x2A0000, 1472K
         data_folder = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data")
         if not os.path.exists(data_folder):
             messagebox.showerror("Error", 
-                f"No se encontró la carpeta 'data' en:\n{data_folder}\n\n"
+                f"No se encontr├│ la carpeta 'data' en:\n{data_folder}\n\n"
                 f"Crea una carpeta 'data' con los archivos a subir.")
             return
         
@@ -1788,7 +1677,7 @@ spiffs,      data, spiffs,  0x2A0000, 1472K
         files = [f for f in os.listdir(data_folder) if os.path.isfile(os.path.join(data_folder, f))]
         if not files:
             messagebox.showwarning("Advertencia", 
-                f"La carpeta 'data' está vacía.\nNo hay archivos para subir.")
+                f"La carpeta 'data' est├í vac├¡a.\nNo hay archivos para subir.")
             return
         
         # Get partition info
@@ -1796,21 +1685,21 @@ spiffs,      data, spiffs,  0x2A0000, 1472K
         chip = self.selected_chip.get()
         
         # Confirm action
-        file_list = "\n".join([f"  • {f}" for f in files[:10]])
+        file_list = "\n".join([f"  ΓÇó {f}" for f in files[:10]])
         if len(files) > 10:
-            file_list += f"\n  ... y {len(files) - 10} archivo(s) más"
+            file_list += f"\n  ... y {len(files) - 10} archivo(s) m├ís"
         
         confirm = messagebox.askyesno(
             "Confirmar Upload de Datos",
-            f"📤 UPLOAD DATA FOLDER (SPIFFS)\n\n"
-            f"Se subirán {len(files)} archivo(s) a SPIFFS:\n\n"
+            f"≡ƒôñ UPLOAD DATA FOLDER (SPIFFS)\n\n"
+            f"Se subir├ín {len(files)} archivo(s) a SPIFFS:\n\n"
             f"{file_list}\n\n"
-            f"• Puerto: {port}\n"
-            f"• Chip: {chip}\n"
-            f"• Partición: Se detectará automáticamente desde el dispositivo\n\n"
-            f"Esta operación creará una imagen del filesystem\n"
-            f"y la flasheará en la partición SPIFFS.\n\n"
-            f"¿Continuar?"
+            f"ΓÇó Puerto: {port}\n"
+            f"ΓÇó Chip: {chip}\n"
+            f"ΓÇó Partici├│n: Se detectar├í autom├íticamente desde el dispositivo\n\n"
+            f"Esta operaci├│n crear├í una imagen del filesystem\n"
+            f"y la flashear├í en la partici├│n SPIFFS.\n\n"
+            f"┬┐Continuar?"
         )
         
         if not confirm:
@@ -1818,7 +1707,7 @@ spiffs,      data, spiffs,  0x2A0000, 1472K
             return
         
         self.log("=" * 60, "info")
-        self.log("📤 INICIANDO UPLOAD DATA FOLDER (SPIFFS)", "info")
+        self.log("≡ƒôñ INICIANDO UPLOAD DATA FOLDER (SPIFFS)", "info")
         self.log("=" * 60, "info")
         self.log(f"Puerto: {port}", "info")
         self.log(f"Chip: {chip}", "info")
@@ -1841,44 +1730,44 @@ spiffs,      data, spiffs,  0x2A0000, 1472K
             python_exe = self._get_subprocess_python()
             
             # Step 0: Detect SPIFFS partition address and size
-            self.log("🔍 Paso 0/3: Detectando partición SPIFFS...", "info")
+            self.log("≡ƒöì Paso 0/3: Detectando partici├│n SPIFFS...", "info")
             
             spiffs_info = self._detect_spiffs_partition(port, chip)
             if not spiffs_info:
-                self.log("❌ No se pudo detectar la partición SPIFFS", "error")
+                self.log("Γ¥î No se pudo detectar la partici├│n SPIFFS", "error")
                 messagebox.showerror("Error", 
-                    "No se pudo detectar la partición SPIFFS en el dispositivo.\n\n"
-                    "Asegúrate de que el dispositivo tenga una tabla de particiones válida\n"
-                    "con una partición SPIFFS configurada.")
+                    "No se pudo detectar la partici├│n SPIFFS en el dispositivo.\n\n"
+                    "Aseg├║rate de que el dispositivo tenga una tabla de particiones v├ílida\n"
+                    "con una partici├│n SPIFFS configurada.")
                 return
             
             spiffs_offset, spiffs_size = spiffs_info
-            self.log(f"✅ SPIFFS detectado: 0x{spiffs_offset:X} ({spiffs_size} bytes)", "success")
+            self.log(f"Γ£à SPIFFS detectado: 0x{spiffs_offset:X} ({spiffs_size} bytes)", "success")
             
             # Step 1: Use pre-built SPIFFS image from data/ folder
             # NOTE: Using pre-built image from data/spiffs.bin ensures reliability.
             # SPIFFS images are pre-built and stored in data/ for consistency.
-            self.log("🔨 Paso 1/3: Preparando imagen SPIFFS...", "info")
+            self.log("≡ƒö¿ Paso 1/3: Preparando imagen SPIFFS...", "info")
             
             script_dir = os.path.dirname(os.path.abspath(__file__))
             spiffs_image = os.path.join(script_dir, "data", "spiffs.bin")
             
             # Use the pre-built image from data/ folder
             if os.path.exists(spiffs_image):
-                self.log("✅ Imagen SPIFFS preparada (usando data/spiffs.bin)", "success")
-                self.log(f"📦 Tamaño: {os.path.getsize(spiffs_image)} bytes", "info")
+                self.log("Γ£à Imagen SPIFFS preparada (usando data/spiffs.bin)", "success")
+                self.log(f"≡ƒôª Tama├▒o: {os.path.getsize(spiffs_image)} bytes", "info")
                 self.log_debug(f"Using SPIFFS image: {spiffs_image}")
             else:
-                self.log(f"❌ No se encontró imagen SPIFFS: {spiffs_image}", "error")
+                self.log(f"Γ¥î No se encontr├│ imagen SPIFFS: {spiffs_image}", "error")
                 self.log("", "warning")
                 self.log("El archivo data/spiffs.bin debe existir.", "warning")
                 self.log("Este archivo contiene la imagen del filesystem con los certificados.", "warning")
                 self.log("", "warning")
-                self.log("Para más información, lee: docs/SPIFFS_GUIDE.md", "warning")
+                self.log("Para m├ís informaci├│n, lee: docs/SPIFFS_GUIDE.md", "warning")
                 return
             
             # Step 2: Flash SPIFFS image
-            self.log(f"📤 Paso 2/3: Flasheando SPIFFS a 0x{spiffs_offset:X}...", "info")
+            self.log(f"≡ƒôñ Paso 2/3: Flasheando SPIFFS a 0x{spiffs_offset:X}...", "info")
             
             flash_cmd = [
                 python_exe, "-m", "esptool",
@@ -1917,17 +1806,17 @@ spiffs,      data, spiffs,  0x2A0000, 1472K
                     
                     # Update status label
                     if "Connecting" in line:
-                        self.status_label.config(text="🔌 Connecting to device...")
+                        self.status_label.config(text="≡ƒöî Connecting to device...")
                     elif "Erasing" in line or "erase" in line.lower():
-                        self.status_label.config(text="🗑️ Erasing flash...")
+                        self.status_label.config(text="≡ƒùæ∩╕Å Erasing flash...")
                     elif "Writing at" in line:
-                        self.status_label.config(text="📤 Uploading SPIFFS...")
+                        self.status_label.config(text="≡ƒôñ Uploading SPIFFS...")
                     elif "Hash of data verified" in line:
-                        self.status_label.config(text="✅ Verifying SPIFFS...")
+                        self.status_label.config(text="Γ£à Verifying SPIFFS...")
                     elif "Compressed" in line:
-                        self.status_label.config(text="📦 Compressing SPIFFS...")
+                        self.status_label.config(text="≡ƒôª Compressing SPIFFS...")
                     elif "Uploading" in line:
-                        self.status_label.config(text="📤 Uploading stub...")
+                        self.status_label.config(text="≡ƒôñ Uploading stub...")
                     
                     self.log_debug(f"esptool: {line}")
                     
@@ -1938,28 +1827,28 @@ spiffs,      data, spiffs,  0x2A0000, 1472K
             
             if process.returncode == 0:
                 self.log("=" * 60, "success")
-                self.log("✅ DATA FOLDER SUBIDA EXITOSAMENTE", "success")
+                self.log("Γ£à DATA FOLDER SUBIDA EXITOSAMENTE", "success")
                 self.log("=" * 60, "success")
-                self.log("Los archivos están ahora disponibles en SPIFFS", "info")
-                self.log("ℹ️ Nota: El ESP32 inicializará el filesystem al arrancar", "info")
+                self.log("Los archivos est├ín ahora disponibles en SPIFFS", "info")
+                self.log("Γä╣∩╕Å Nota: El ESP32 inicializar├í el filesystem al arrancar", "info")
                 
                 messagebox.showinfo(
-                    "Éxito",
-                    "✅ Data folder subida exitosamente a SPIFFS\n\n"
-                    "Los archivos están ahora disponibles en el ESP32.\n\n"
-                    "El filesystem será inicializado cuando el ESP32 arranque."
+                    "├ëxito",
+                    "Γ£à Data folder subida exitosamente a SPIFFS\n\n"
+                    "Los archivos est├ín ahora disponibles en el ESP32.\n\n"
+                    "El filesystem ser├í inicializado cuando el ESP32 arranque."
                 )
             else:
-                self.log(f"❌ Error: esptool retornó código {process.returncode}", "error")
+                self.log(f"Γ¥î Error: esptool retorn├│ c├│digo {process.returncode}", "error")
                 messagebox.showerror(
                     "Error",
                     f"Error subiendo data folder.\n\n"
-                    f"Código de error: {process.returncode}\n\n"
-                    f"Revisa el log para más detalles."
+                    f"C├│digo de error: {process.returncode}\n\n"
+                    f"Revisa el log para m├ís detalles."
                 )
         
         except Exception as e:
-            self.log(f"❌ ERROR subiendo data folder: {e}", "error")
+            self.log(f"Γ¥î ERROR subiendo data folder: {e}", "error")
             self.log_debug(f"Exception: {repr(e)}")
             messagebox.showerror("Error", f"Error subiendo data folder:\n\n{str(e)}")
         
@@ -2048,7 +1937,7 @@ spiffs,      data, spiffs,  0x2A0000, 1472K
                     with open(filepath, 'rb') as f:
                         content = f.read()
                     files.append((filename, content))
-                    self.log(f"  📄 Agregando: {filename} ({len(content)} bytes)", "info")
+                    self.log(f"  ≡ƒôä Agregando: {filename} ({len(content)} bytes)", "info")
             
             with open(output_file, 'wb') as out:
                 # SPIFFS superblock (simplified)
@@ -2117,14 +2006,14 @@ spiffs,      data, spiffs,  0x2A0000, 1472K
                 if padding > 0:
                     out.write(b'\xFF' * padding)
             
-            self.log(f"✅ Imagen SPIFFS básica creada ({len(files)} archivos)", "success")
-            self.log(f"⚠️ ADVERTENCIA: Usando formato SPIFFS simplificado", "warning")
+            self.log(f"Γ£à Imagen SPIFFS b├ísica creada ({len(files)} archivos)", "success")
+            self.log(f"ΓÜá∩╕Å ADVERTENCIA: Usando formato SPIFFS simplificado", "warning")
             self.log(f"   Para funcionalidad completa, instala mkspiffs", "warning")
             
         except Exception as e:
-            self.log(f"❌ Error creando imagen SPIFFS: {e}", "error")
+            self.log(f"Γ¥î Error creando imagen SPIFFS: {e}", "error")
             # Fallback to even simpler method
-            self.log("📝 Usando método de concatenación básico...", "info")
+            self.log("≡ƒô¥ Usando m├⌐todo de concatenaci├│n b├ísico...", "info")
             with open(output_file, 'wb') as out:
                 for filename in sorted(os.listdir(data_folder)):
                     filepath = os.path.join(data_folder, filename)
@@ -2265,7 +2154,7 @@ spiffs,      data, spiffs,  0x2A0000, 1472K
                     result = subprocess.run(cmd, capture_output=True, text=True, timeout=120)
                     self.log_debug(f"mkspiffs stdout: {result.stdout}")
                     if result.returncode == 0:
-                        self.log_debug('mkspiffs creado con éxito')
+                        self.log_debug('mkspiffs creado con ├⌐xito')
                         # Verify the output file exists
                         if os.path.exists(output_file):
                             file_size = os.path.getsize(output_file)
@@ -2274,12 +2163,12 @@ spiffs,      data, spiffs,  0x2A0000, 1472K
                             self.log_debug(f'ERROR: Output file not found: {output_file}')
                         return
                     else:
-                        self.log_debug(f'mkspiffs falló ({mkb}): {result.stderr}')
+                        self.log_debug(f'mkspiffs fall├│ ({mkb}): {result.stderr}')
                 except Exception as e:
                     self.log_debug(f'Error ejecutando mkspiffs ({mkb}): {e}')
 
         # If we reach here, no external tool produced a valid image
-        raise Exception('No se encontró mkspiffs funcional')
+        raise Exception('No se encontr├│ mkspiffs funcional')
 
     def _download_mkspiffs(self, dest_path):
         """Attempt to download mkspiffs binary from GitHub releases into dest_path.
@@ -2305,7 +2194,7 @@ spiffs,      data, spiffs,  0x2A0000, 1472K
                 os.chmod(dest_path, stat.S_IEXEC | stat.S_IREAD | stat.S_IWRITE)
             except Exception:
                 pass
-            self.log(f"✅ mkspiffs descargado en: {dest_path}", 'success')
+            self.log(f"Γ£à mkspiffs descargado en: {dest_path}", 'success')
             return True
 
         # 1) Try GitHub API to locate an appropriate asset
@@ -2347,7 +2236,7 @@ spiffs,      data, spiffs,  0x2A0000, 1472K
         except:
             pass
 
-        raise Exception(f"No se pudo descargar mkspiffs automáticamente. Intentados: {tried_urls}.\nPor favor descarga 'mkspiffs-<version>-windows-x64.exe' de https://github.com/igrr/mkspiffs/releases y colócalo en: {os.path.dirname(dest_path)}")
+        raise Exception(f"No se pudo descargar mkspiffs autom├íticamente. Intentados: {tried_urls}.\nPor favor descarga 'mkspiffs-<version>-windows-x64.exe' de https://github.com/igrr/mkspiffs/releases y col├│calo en: {os.path.dirname(dest_path)}")
 
     def _verify_spiffs_upload(self, port, chip, spiffs_image):
         """Verify that SPIFFS partition has data (not empty/erased)"""
@@ -2409,16 +2298,16 @@ spiffs,      data, spiffs,  0x2A0000, 1472K
             if data:
                 # SPIFFS has data if it's not all 0xFF
                 if data == b'\xFF' * len(data):
-                    self.log("⚠️ Partición SPIFFS vacía (completamente borrada)", "warning")
+                    self.log("ΓÜá∩╕Å Partici├│n SPIFFS vac├¡a (completamente borrada)", "warning")
                     return False
                 else:
-                    self.log("✅ Partición SPIFFS contiene datos", "success")
+                    self.log("Γ£à Partici├│n SPIFFS contiene datos", "success")
                     return True
             
             return False
         
         except Exception as e:
-            self.log_debug(f"Error en verificación: {e}")
+            self.log_debug(f"Error en verificaci├│n: {e}")
             # Clean up temp file on error
             try:
                 temp_read = os.path.join(os.path.dirname(os.path.abspath(__file__)), "spiffs_check.bin")
@@ -2431,7 +2320,7 @@ spiffs,      data, spiffs,  0x2A0000, 1472K
     def verify_spiffs_manual(self):
         """Manual SPIFFS verification - checks if partition has data"""
         if self.is_flashing:
-            messagebox.showwarning("Ocupado", "Ya hay una operación en progreso")
+            messagebox.showwarning("Ocupado", "Ya hay una operaci├│n en progreso")
             return
         
         if not self.selected_port.get():
@@ -2442,10 +2331,10 @@ spiffs,      data, spiffs,  0x2A0000, 1472K
         chip = self.selected_chip.get()
         
         self.log("=" * 60, "info")
-        self.log("🔍 VERIFICANDO PARTICIÓN SPIFFS", "info")
+        self.log("≡ƒöì VERIFICANDO PARTICI├ôN SPIFFS", "info")
         self.log("=" * 60, "info")
-        self.log("Nota: Esta verificación comprueba que la partición contiene datos", "info")
-        self.log("Para verificar archivos específicos, usa el monitor serial del ESP32", "info")
+        self.log("Nota: Esta verificaci├│n comprueba que la partici├│n contiene datos", "info")
+        self.log("Para verificar archivos espec├¡ficos, usa el monitor serial del ESP32", "info")
         
         # Start verification in thread
         thread = threading.Thread(
@@ -2463,28 +2352,28 @@ spiffs,      data, spiffs,  0x2A0000, 1472K
         try:
             if self._verify_spiffs_upload(port, chip, spiffs_image):
                 self.log("=" * 60, "success")
-                self.log("✅ VERIFICACIÓN EXITOSA", "success")
+                self.log("Γ£à VERIFICACI├ôN EXITOSA", "success")
                 self.log("=" * 60, "success")
-                self.log("La partición SPIFFS contiene datos", "info")
+                self.log("La partici├│n SPIFFS contiene datos", "info")
                 messagebox.showinfo(
-                    "Verificación Exitosa",
-                    "✅ Partición SPIFFS verificada\n\n"
-                    "La partición contiene datos (no está vacía).\n\n"
-                    "Los archivos serán accesibles cuando el\n"
+                    "Verificaci├│n Exitosa",
+                    "Γ£à Partici├│n SPIFFS verificada\n\n"
+                    "La partici├│n contiene datos (no est├í vac├¡a).\n\n"
+                    "Los archivos ser├ín accesibles cuando el\n"
                     "ESP32 arranque y monte el filesystem."
                 )
             else:
                 self.log("=" * 60, "warning")
-                self.log("⚠️ PARTICIÓN SPIFFS VACÍA", "warning")
+                self.log("ΓÜá∩╕Å PARTICI├ôN SPIFFS VAC├ìA", "warning")
                 self.log("=" * 60, "warning")
                 messagebox.showwarning(
-                    "Partición Vacía",
-                    "⚠️ La partición SPIFFS está vacía\n\n"
+                    "Partici├│n Vac├¡a",
+                    "ΓÜá∩╕Å La partici├│n SPIFFS est├í vac├¡a\n\n"
                     "Sube el data folder para escribir archivos."
                 )
         
         except Exception as e:
-            self.log(f"❌ ERROR durante verificación: {e}", "error")
+            self.log(f"Γ¥î ERROR durante verificaci├│n: {e}", "error")
             messagebox.showerror("Error", f"Error verificando SPIFFS:\n\n{str(e)}")
         
         finally:
@@ -2495,14 +2384,14 @@ spiffs,      data, spiffs,  0x2A0000, 1472K
         """Detect partition table from connected device"""
         if not self.selected_port.get():
             messagebox.showerror("Error", "Selecciona un puerto COM primero")
-            self.log_debug("Detect partitions: No se seleccionó puerto")
+            self.log_debug("Detect partitions: No se seleccion├│ puerto")
             return
         
         port = self.selected_port.get().split(' - ')[0]
         chip = self.selected_chip.get()
         
         self.log("Detectando particiones en el dispositivo...", "info")
-        self.log_debug(f"Iniciando detección de particiones en {port}, chip: {chip}")
+        self.log_debug(f"Iniciando detecci├│n de particiones en {port}, chip: {chip}")
         
         # Run in thread to avoid blocking UI
         thread = threading.Thread(target=self._detect_partitions_thread, args=(port, chip))
@@ -2516,10 +2405,10 @@ spiffs,      data, spiffs,  0x2A0000, 1472K
             try:
                 import esptool
             except ImportError:
-                self.log("Error: esptool no está instalado", "error")
+                self.log("Error: esptool no est├í instalado", "error")
                 self.log_debug("esptool no encontrado - instala con: pip install esptool")
                 messagebox.showerror("Error", 
-                    "esptool no está instalado.\n\n" +
+                    "esptool no est├í instalado.\n\n" +
                     "Instala las dependencias con:\n" +
                     "pip install -r requirements.txt")
                 return
@@ -2549,26 +2438,26 @@ spiffs,      data, spiffs,  0x2A0000, 1472K
             esptool_args = ["--chip", chip, "--port", port, "--baud", "115200", "read-flash", "0x8000", "0x1000", temp_file]
             result = self._run_esptool(esptool_args, capture_output=True, timeout=30)
 
-            self.log_debug(f"Código de retorno: {result.returncode}", "verbose")
+            self.log_debug(f"C├│digo de retorno: {result.returncode}", "verbose")
             if result.stdout:
                 self.log_debug(f"STDOUT: {result.stdout[:200]}...", "verbose")
             if result.stderr:
                 self.log_debug(f"STDERR: {result.stderr[:200]}...", "verbose")
             
             if result.returncode == 0 and os.path.exists(temp_file):
-                self.log_serial(f"Datos leídos desde 0x8000", "rx")
+                self.log_serial(f"Datos le├¡dos desde 0x8000", "rx")
                 # Parse partition table
                 partition_info = self.parse_partition_table(temp_file)
                 
                 # Check if partition table is missing/invalid
-                if any("inválida" in p or "vacía" in p or "ADVERTENCIA" in p for p in partition_info):
+                if any("inv├ílida" in p or "vac├¡a" in p or "ADVERTENCIA" in p for p in partition_info):
                     self.log("="*60, "warning")
-                    self.log("⚠️ ADVERTENCIA: Tabla de particiones inválida o inexistente", "warning")
+                    self.log("ΓÜá∩╕Å ADVERTENCIA: Tabla de particiones inv├ílida o inexistente", "warning")
                     self.log("="*60, "warning")
                     for partition in partition_info:
                         self.log(f"  {partition}", "warning")
                     self.log("", "normal")
-                    self.log("🛠️ SOLUCIÓN: Usa Complete Mode para flashear:", "info")
+                    self.log("≡ƒ¢á∩╕Å SOLUCI├ôN: Usa Complete Mode para flashear:", "info")
                     self.log("  1. Selecciona 'Complete Mode'", "info")
                     self.log("  2. Carga bootloader.bin + partitions.bin + firmware.bin", "info")
                     self.log("  3. Flashea todo junto", "info")
@@ -2576,8 +2465,8 @@ spiffs,      data, spiffs,  0x2A0000, 1472K
                 else:
                     self.log("Particiones detectadas:", "success")
                     for partition in partition_info:
-                        self.log(f"  • {partition}", "info")
-                        self.log_debug(f"Partición: {partition}")
+                        self.log(f"  ΓÇó {partition}", "info")
+                        self.log_debug(f"Partici├│n: {partition}")
                 
                 # Clean up
                 try:
@@ -2586,12 +2475,12 @@ spiffs,      data, spiffs,  0x2A0000, 1472K
                     pass
             else:
                 self.log("Error al leer particiones del dispositivo", "error")
-                self.log(result.stderr if result.stderr else "Timeout o error de conexión", "error")
+                self.log(result.stderr if result.stderr else "Timeout o error de conexi├│n", "error")
                 self.log_debug(f"Error leyendo particiones: {result.stderr}")
                 
         except Exception as e:
             self.log(f"Error detectando particiones: {str(e)}", "error")
-            self.log_debug(f"Excepción en _detect_partitions_thread: {str(e)}")
+            self.log_debug(f"Excepci├│n en _detect_partitions_thread: {str(e)}")
     
     def parse_partition_table(self, partition_file):
         """Parse partition table binary file"""
@@ -2603,8 +2492,8 @@ spiffs,      data, spiffs,  0x2A0000, 1472K
             
             # Check if file is empty or too small
             if len(data) < 32:
-                self.log_debug(f"Archivo de particiones muy pequeño: {len(data)} bytes")
-                return ["Tabla de particiones vacía o corrupta"]
+                self.log_debug(f"Archivo de particiones muy peque├▒o: {len(data)} bytes")
+                return ["Tabla de particiones vac├¡a o corrupta"]
             
             # Check magic bytes
             if data[0:2] != b'\xAA\x50':
@@ -2612,7 +2501,7 @@ spiffs,      data, spiffs,  0x2A0000, 1472K
                 # Check if chip is erased (all 0xFF)
                 if data[0:32] == b'\xFF' * 32:
                     return ["ADVERTENCIA: Chip completamente borrado - usa Complete Mode para flashear bootloader y particiones"]
-                return ["Tabla de particiones inválida (magic bytes incorrectos)"]
+                return ["Tabla de particiones inv├ílida (magic bytes incorrectos)"]
             
             # Parse entries (32 bytes each)
             offset = 0  # Start from beginning, not 32
@@ -2629,18 +2518,18 @@ spiffs,      data, spiffs,  0x2A0000, 1472K
                 
                 type_str = {0: "app", 1: "data"}.get(ptype, f"type_{ptype}")
                 partitions.append(f"{label}: {type_str} at 0x{p_offset:X} size 0x{p_size:X}")
-                self.log_debug(f"Partición encontrada: {label} ({type_str}) @ 0x{p_offset:X}, size 0x{p_size:X}")
+                self.log_debug(f"Partici├│n encontrada: {label} ({type_str}) @ 0x{p_offset:X}, size 0x{p_size:X}")
                 
                 offset += 32
                 entry_count += 1
             
             if entry_count == 0:
-                return ["No se encontraron entradas válidas en la tabla de particiones"]
+                return ["No se encontraron entradas v├ílidas en la tabla de particiones"]
             
-            return partitions if partitions else ["No se encontraron particiones válidas"]
+            return partitions if partitions else ["No se encontraron particiones v├ílidas"]
             
         except Exception as e:
-            self.log_debug(f"Excepción parseando tabla: {str(e)}")
+            self.log_debug(f"Excepci├│n parseando tabla: {str(e)}")
             return [f"Error parseando: {str(e)}"]
     
     def convert_csv_to_bin(self, csv_path):
@@ -2709,7 +2598,7 @@ spiffs,      data, spiffs,  0x2A0000, 1472K
                     self.log_debug(f"Parsed: {name} @ 0x{offset_int:X}, size 0x{size_int:X}")
             
             if not partitions:
-                self.log("No se encontraron particiones válidas en el CSV", "error")
+                self.log("No se encontraron particiones v├ílidas en el CSV", "error")
                 return None
             
             # Generate binary partition table
@@ -2740,7 +2629,7 @@ spiffs,      data, spiffs,  0x2A0000, 1472K
                 end_marker[i] = 0xFF  # End marker is all 0xFF
             bin_data.extend(end_marker)
             
-            self.log(f"📊 Agregado marcador de fin de tabla (32 bytes)", "info")
+            self.log(f"≡ƒôè Agregado marcador de fin de tabla (32 bytes)", "info")
             
             # Pad to 4KB boundary
             while len(bin_data) % 4096 != 0:
@@ -2761,7 +2650,7 @@ spiffs,      data, spiffs,  0x2A0000, 1472K
             # Additional validation: read back and verify partition entries
             self._debug_partition_file(temp_bin)
             
-            self.log(f"✅ Convertido exitosamente: {os.path.basename(temp_bin)} ({len(bin_data)} bytes)", "success")
+            self.log(f"Γ£à Convertido exitosamente: {os.path.basename(temp_bin)} ({len(bin_data)} bytes)", "success")
             self.log_debug(f"Binary saved to: {temp_bin}")
             
             return temp_bin
@@ -2776,13 +2665,13 @@ spiffs,      data, spiffs,  0x2A0000, 1472K
     def _debug_partition_file(self, bin_file):
         """Debug function to validate generated partition binary"""
         try:
-            self.log("🔍 Validando archivo de particiones generado...", "info")
+            self.log("≡ƒöì Validando archivo de particiones generado...", "info")
             
             with open(bin_file, 'rb') as f:
                 data = f.read()
             
             if len(data) < 32:
-                self.log("❌ Archivo muy pequeño para contener particiones", "error")
+                self.log("Γ¥î Archivo muy peque├▒o para contener particiones", "error")
                 return
                 
             offset = 0
@@ -2792,10 +2681,10 @@ spiffs,      data, spiffs,  0x2A0000, 1472K
                 # Read magic bytes
                 magic = data[offset:offset+2]
                 if magic == b'\xFF\xFF':  # End marker
-                    self.log(f"✅ Marcador de fin encontrado en offset 0x{offset:X}", "info")
+                    self.log(f"Γ£à Marcador de fin encontrado en offset 0x{offset:X}", "info")
                     break
                 elif magic != b'\xAA\x50':
-                    self.log(f"⚠️ Magic bytes inesperados en offset 0x{offset:X}: {magic.hex()}", "warning")
+                    self.log(f"ΓÜá∩╕Å Magic bytes inesperados en offset 0x{offset:X}: {magic.hex()}", "warning")
                     break
                 
                 # Parse entry
@@ -2805,15 +2694,15 @@ spiffs,      data, spiffs,  0x2A0000, 1472K
                 p_size = struct.unpack('<I', data[offset+8:offset+12])[0]
                 name = data[offset+12:offset+28].decode('utf-8', errors='ignore').rstrip('\x00')
                 
-                self.log(f"  📁 {name}: tipo={ptype}, subtipo={subtype}, offset=0x{p_offset:X}, size=0x{p_size:X}", "info")
+                self.log(f"  ≡ƒôü {name}: tipo={ptype}, subtipo={subtype}, offset=0x{p_offset:X}, size=0x{p_size:X}", "info")
                 
                 partition_count += 1
                 offset += 32
             
-            self.log(f"✅ Validación completada: {partition_count} particiones encontradas", "success")
+            self.log(f"Γ£à Validaci├│n completada: {partition_count} particiones encontradas", "success")
             
         except Exception as e:
-            self.log(f"❌ Error validando archivo de particiones: {e}", "error")
+            self.log(f"Γ¥î Error validando archivo de particiones: {e}", "error")
     
     def parse_csv_partition_table(self, csv_path):
         """Parse CSV partition table to find app address"""
@@ -2844,36 +2733,36 @@ spiffs,      data, spiffs,  0x2A0000, 1472K
                     else:
                         offset_int = int(offset)
                     
-                    self.log(f"  CSV línea {line_num}: {name} ({ptype}/{subtype}) @ 0x{offset_int:X}", "info")
+                    self.log(f"  CSV l├¡nea {line_num}: {name} ({ptype}/{subtype}) @ 0x{offset_int:X}", "info")
                     
                     # Find app partitions
                     if ptype == 'app':
                         if subtype == 'factory':
                             factory_address = f"0x{offset_int:X}"
-                            self.log(f"  🏭 Factory app (CSV): {name} en {factory_address}", "success")
+                            self.log(f"  ≡ƒÅ¡ Factory app (CSV): {name} en {factory_address}", "success")
                         elif subtype == 'ota_0' and app_address is None:
                             app_address = f"0x{offset_int:X}"
-                            self.log(f"  🔄 OTA app0 (CSV): {name} en {app_address}", "success")
+                            self.log(f"  ≡ƒöä OTA app0 (CSV): {name} en {app_address}", "success")
                     
                     # Check for OTA data
                     if ptype == 'data' and subtype == 'ota':
                         has_ota = True
-                        self.log(f"  📊 OTA data (CSV) encontrada: {name}", "info")
+                        self.log(f"  ≡ƒôè OTA data (CSV) encontrada: {name}", "info")
             
             # Priority: factory > OTA_0 > default
             final_address = factory_address if factory_address else app_address
             
             if final_address is None:
                 final_address = "0x10000"
-                self.log("⚠️ No se encontraron apps en CSV, usando 0x10000", "warning")
+                self.log("ΓÜá∩╕Å No se encontraron apps en CSV, usando 0x10000", "warning")
             else:
                 partition_type = "Factory" if factory_address else "OTA app0"
-                self.log(f"✅ Dirección CSV detectada: {final_address} ({partition_type})", "success")
+                self.log(f"Γ£à Direcci├│n CSV detectada: {final_address} ({partition_type})", "success")
             
             return final_address, has_ota
             
         except Exception as e:
-            self.log(f"❌ Error parseando CSV: {e}", "error")
+            self.log(f"Γ¥î Error parseando CSV: {e}", "error")
             return "0x10000", False
     
     def log(self, message, tag="normal"):
@@ -2892,35 +2781,35 @@ spiffs,      data, spiffs,  0x2A0000, 1472K
         # Create firmware folder if it doesn't exist
         if not os.path.exists(firmware_dir):
             os.makedirs(firmware_dir)
-            self.firmware_label.config(text="📁 Usa el botón 'Seleccionar' para elegir firmware", 
+            self.firmware_label.config(text="≡ƒôü Usa el bot├│n 'Seleccionar' para elegir firmware", 
                                       foreground="gray")
             self.log("Carpeta 'firmware' creada en: " + firmware_dir, "info")
-            self.log("Usa el botón 'Seleccionar' para elegir tu archivo .bin", "info")
+            self.log("Usa el bot├│n 'Seleccionar' para elegir tu archivo .bin", "info")
             return
         
         # Search for .bin files
         bin_files = [f for f in os.listdir(firmware_dir) if f.endswith('.bin') and 'firmware' in f.lower()]
         
         if not bin_files:
-            self.firmware_label.config(text="📁 Usa el botón 'Seleccionar' para elegir firmware", 
+            self.firmware_label.config(text="≡ƒôü Usa el bot├│n 'Seleccionar' para elegir firmware", 
                                       foreground="gray")
-            self.log(f"No se encontró firmware.bin en: {firmware_dir}", "info")
-            self.log("Usa el botón 'Seleccionar' para elegir tu archivo", "info")
+            self.log(f"No se encontr├│ firmware.bin en: {firmware_dir}", "info")
+            self.log("Usa el bot├│n 'Seleccionar' para elegir tu archivo", "info")
         elif len(bin_files) == 1:
             self.firmware_path = os.path.join(firmware_dir, bin_files[0])
-            self.firmware_label.config(text=f"✓ {bin_files[0]} ({self.get_file_size(self.firmware_path)})", 
+            self.firmware_label.config(text=f"Γ£ô {bin_files[0]} ({self.get_file_size(self.firmware_path)})", 
                                       foreground="green")
             self.log(f"Firmware encontrado: {bin_files[0]}", "success")
             # Try auto-detect companion files
             self.auto_detect_companion_files(self.firmware_path)
         else:
             # Multiple files - user should select
-            self.firmware_label.config(text=f"📁 {len(bin_files)} archivos encontrados - usa 'Seleccionar'", 
+            self.firmware_label.config(text=f"≡ƒôü {len(bin_files)} archivos encontrados - usa 'Seleccionar'", 
                                       foreground="orange")
-            self.log(f"Se encontraron {len(bin_files)} archivos .bin - usa el botón para seleccionar", "info")
+            self.log(f"Se encontraron {len(bin_files)} archivos .bin - usa el bot├│n para seleccionar", "info")
     
     def get_file_size(self, filepath):
-        """Obtener tamaño del archivo en formato legible"""
+        """Obtener tama├▒o del archivo en formato legible"""
         size = os.path.getsize(filepath)
         for unit in ['B', 'KB', 'MB', 'GB']:
             if size < 1024.0:
@@ -2979,7 +2868,7 @@ spiffs,      data, spiffs,  0x2A0000, 1472K
         
         # Validations
         if not self.firmware_path or not os.path.exists(self.firmware_path):
-            messagebox.showerror("Error", "Selecciona un archivo de firmware válido.")
+            messagebox.showerror("Error", "Selecciona un archivo de firmware v├ílido.")
             return
         
         if not self.selected_port.get():
@@ -3004,7 +2893,7 @@ spiffs,      data, spiffs,  0x2A0000, 1472K
         
         # Confirm
         mode_desc = "Simple" if self.flash_mode.get() == "simple" else "Complete"
-        confirm_msg = f"¿Flashear firmware en {port}?\n\n" \
+        confirm_msg = f"┬┐Flashear firmware en {port}?\n\n" \
                      f"Modo: {mode_desc}\n" \
                      f"Chip: {self.selected_chip.get()}\n" \
                      f"Firmware: {os.path.basename(self.firmware_path)}"
@@ -3032,10 +2921,10 @@ spiffs,      data, spiffs,  0x2A0000, 1472K
             try:
                 import esptool
             except ImportError:
-                self.log("Error: esptool no está instalado", "error")
+                self.log("Error: esptool no est├í instalado", "error")
                 self.log_debug("esptool no encontrado - instala con: pip install esptool")
                 messagebox.showerror("Error", 
-                    "esptool no está instalado.\n\n" +
+                    "esptool no est├í instalado.\n\n" +
                     "Instala las dependencias con:\n" +
                     "pip install -r requirements.txt")
                 return
@@ -3059,7 +2948,7 @@ spiffs,      data, spiffs,  0x2A0000, 1472K
             chip = self.selected_chip.get()
             baud_rate = self.selected_baud.get()
             mode = self.flash_mode.get()
-            self.log_debug(f"Configuración - Chip: {chip}, Baud: {baud_rate}, Modo: {mode}")
+            self.log_debug(f"Configuraci├│n - Chip: {chip}, Baud: {baud_rate}, Modo: {mode}")
             
             # Build flasher args structure (ESP-IDF style)
             flasher_args = self.build_flasher_args(mode)
@@ -3084,7 +2973,7 @@ spiffs,      data, spiffs,  0x2A0000, 1472K
                 # SIMPLE MODE: ALWAYS smart erase (only app region)
                 # NEVER touches: bootloader, partitions, NVS
                 self.log("PASO 1: Borrado inteligente - Solo firmware (preserva bootloader/partitions/NVS)...", "info")
-                self.log_debug("Simple mode: Borrando SOLO región de firmware")
+                self.log_debug("Simple mode: Borrando SOLO regi├│n de firmware")
                 success = self.smart_erase(base_cmd, flasher_args)
                 if not success:
                     self.log("Error en borrado de firmware", "error")
@@ -3104,7 +2993,7 @@ spiffs,      data, spiffs,  0x2A0000, 1472K
                 else:
                     # Full erase - everything gets wiped and reflashed
                     self.log("PASO 1: Borrado completo del chip...", "info")
-                    self.log_debug("Complete mode: Borrado total - todo será reflasheado")
+                    self.log_debug("Complete mode: Borrado total - todo ser├í reflasheado")
                     if not self.execute_erase(base_cmd):
                         return
                 self.log("Borrado completado", "success")
@@ -3115,19 +3004,19 @@ spiffs,      data, spiffs,  0x2A0000, 1472K
             
             total_steps = len(flasher_args['flash_files'])
             for idx, (address, filepath, description) in enumerate(flasher_args['flash_files'], 1):
-                self.log(f"[{idx}/{total_steps}] {description} → {address}...", "info")
+                self.log(f"[{idx}/{total_steps}] {description} ΓåÆ {address}...", "info")
                 
                 if not self.flash_component(base_cmd, address, filepath, description):
                     self.log(f"Error flasheando {description}", "error")
                     messagebox.showerror("Error", f"Error flasheando {description}\n\nRevisa el log para detalles.")
                     return
                 
-                self.log(f"✓ {description} flasheado exitosamente", "success")
+                self.log(f"Γ£ô {description} flasheado exitosamente", "success")
                 self.log("", "normal")
             
             # Success!
             self.log("=" * 60, "success")
-            self.log(" ¡FLASHEO COMPLETADO EXITOSAMENTE!", "success")
+            self.log(" ┬íFLASHEO COMPLETADO EXITOSAMENTE!", "success")
             self.log("=" * 60, "success")
             
             # Update session stats
@@ -3158,21 +3047,21 @@ spiffs,      data, spiffs,  0x2A0000, 1472K
             
             self.update_session_display()
             
-            messagebox.showinfo("Éxito", f"¡Firmware flasheado exitosamente!\n\nModo: {mode.title()}")
+            messagebox.showinfo("├ëxito", f"┬íFirmware flasheado exitosamente!\n\nModo: {mode.title()}")
             
         except subprocess.TimeoutExpired as e:
             self.log("="*60, "error")
-            self.log("ERROR: Timeout en operación de flasheo", "error")
+            self.log("ERROR: Timeout en operaci├│n de flasheo", "error")
             self.log(f"Detalles: {str(e)}", "error")
             self.log_debug(f"Timeout exception: {str(e)}")
             self.log("="*60, "error")
             messagebox.showerror("Error de Timeout", 
-                f"La operación de flasheo tardó demasiado.\n\n"
+                f"La operaci├│n de flasheo tard├│ demasiado.\n\n"
                 f"Posibles causas:\n"
-                f"• Cable USB defectuoso\n"
-                f"• Puerto COM incorrecto\n"
-                f"• Chip no responde\n\n"
-                f"Revisa el log principal para más detalles.")
+                f"ΓÇó Cable USB defectuoso\n"
+                f"ΓÇó Puerto COM incorrecto\n"
+                f"ΓÇó Chip no responde\n\n"
+                f"Revisa el log principal para m├ís detalles.")
         except FileNotFoundError as e:
             self.log("="*60, "error")
             self.log("ERROR: Archivo no encontrado", "error")
@@ -3180,8 +3069,8 @@ spiffs,      data, spiffs,  0x2A0000, 1472K
             self.log_debug(f"FileNotFoundError: {str(e)}")
             self.log("="*60, "error")
             messagebox.showerror("Error de Archivo", 
-                f"No se encontró un archivo necesario:\n\n{str(e)}\n\n"
-                f"Verifica que todos los archivos estén seleccionados correctamente.")
+                f"No se encontr├│ un archivo necesario:\n\n{str(e)}\n\n"
+                f"Verifica que todos los archivos est├⌐n seleccionados correctamente.")
         except PermissionError as e:
             self.log("="*60, "error")
             self.log("ERROR: Permiso denegado", "error")
@@ -3190,12 +3079,12 @@ spiffs,      data, spiffs,  0x2A0000, 1472K
             self.log("="*60, "error")
             messagebox.showerror("Error de Permisos", 
                 f"Permiso denegado:\n\n{str(e)}\n\n"
-                f"• Cierra otros programas que usen el puerto COM\n"
-                f"• Ejecuta como administrador\n"
-                f"• Verifica que el archivo no esté siendo usado")
+                f"ΓÇó Cierra otros programas que usen el puerto COM\n"
+                f"ΓÇó Ejecuta como administrador\n"
+                f"ΓÇó Verifica que el archivo no est├⌐ siendo usado")
         except Exception as e:
             self.log("="*60, "error")
-            self.log("ERROR CRÍTICO EN FLASHEO", "error")
+            self.log("ERROR CR├ìTICO EN FLASHEO", "error")
             self.log(f"Tipo de error: {type(e).__name__}", "error")
             self.log(f"Mensaje: {str(e)}", "error")
             self.log_debug(f"Exception completa: {repr(e)}")
@@ -3210,7 +3099,7 @@ spiffs,      data, spiffs,  0x2A0000, 1472K
                     self.log_debug(line, "verbose")
             self.log("="*60, "error")
             
-            messagebox.showerror("Error Crítico", 
+            messagebox.showerror("Error Cr├¡tico", 
                 f"Error inesperado durante el flasheo:\n\n"
                 f"{type(e).__name__}: {str(e)}\n\n"
                 f"Revisa el LOG PRINCIPAL (panel izquierdo) para detalles completos.\n\n"
@@ -3246,7 +3135,7 @@ spiffs,      data, spiffs,  0x2A0000, 1472K
                 firmware_addr = self.get_firmware_address_simple()
                 flasher_args["flash_files"].append((firmware_addr, self.firmware_path, "Firmware (app)"))
                 
-                self.log(f"  • Firmware → {firmware_addr}", "info")
+                self.log(f"  ΓÇó Firmware ΓåÆ {firmware_addr}", "info")
                 
             else:  # complete mode
                 # Complete mode: Flash bootloader + partitions + firmware
@@ -3259,14 +3148,14 @@ spiffs,      data, spiffs,  0x2A0000, 1472K
                 skip_bootloader = self.preserve_bootloader.get()
                 
                 if skip_bootloader:
-                    self.log("🚫 Bootloader preservado (no se flasheará)", "info")
+                    self.log("≡ƒÜ½ Bootloader preservado (no se flashear├í)", "info")
                 else:
                     # Add bootloader to flash list (chip-specific address)
                     bootloader_addr = self.get_bootloader_address()
                     flasher_args["flash_files"].append(
                         (bootloader_addr, self.bootloader_path, "Bootloader (2nd stage)")
                     )
-                    self.log(f"  • Bootloader → {bootloader_addr}", "info")
+                    self.log(f"  ΓÇó Bootloader ΓåÆ {bootloader_addr}", "info")
                 
                 # Always flash partitions
                 partition_addr = self.get_partition_table_address()
@@ -3288,11 +3177,11 @@ spiffs,      data, spiffs,  0x2A0000, 1472K
                 )
                 
                 if not skip_bootloader:
-                    self.log(f"  • Bootloader → {self.get_bootloader_address()}", "info")
-                self.log(f"  • Partitions → {self.get_partition_table_address()}", "info")
+                    self.log(f"  ΓÇó Bootloader ΓåÆ {self.get_bootloader_address()}", "info")
+                self.log(f"  ΓÇó Partitions ΓåÆ {self.get_partition_table_address()}", "info")
                 if has_ota:
-                    self.log(f"  • OTA Data → {self.esp_idf_addresses['ota_data']}", "info")
-                self.log(f"  • Firmware → {app_address}", "info")
+                    self.log(f"  ΓÇó OTA Data ΓåÆ {self.esp_idf_addresses['ota_data']}", "info")
+                self.log(f"  ΓÇó Firmware ΓåÆ {app_address}", "info")
             
             return flasher_args
             
@@ -3321,7 +3210,7 @@ spiffs,      data, spiffs,  0x2A0000, 1472K
                 data = f.read()
             
             if len(data) < 32 or data[0:2] != b'\xAA\x50':
-                self.log("❌ Partition table inválida, usando dirección por defecto", "warning")
+                self.log("Γ¥î Partition table inv├ílida, usando direcci├│n por defecto", "warning")
                 return "0x10000", False
             
             # Parse partition entries (each entry is 32 bytes, starting from offset 0)
@@ -3330,7 +3219,7 @@ spiffs,      data, spiffs,  0x2A0000, 1472K
             has_ota = False
             factory_address = None
             
-            self.log("🔍 Analizando particiones:", "info")
+            self.log("≡ƒöì Analizando particiones:", "info")
             
             while offset + 32 <= len(data):
                 if data[offset:offset+2] != b'\xAA\x50':
@@ -3342,25 +3231,25 @@ spiffs,      data, spiffs,  0x2A0000, 1472K
                 p_size = struct.unpack('<I', data[offset+8:offset+12])[0]
                 label = data[offset+12:offset+28].decode('utf-8', errors='ignore').rstrip('\x00')
                 
-                self.log(f"  📁 {label}: tipo={ptype}, subtipo={subtype}, offset=0x{p_offset:X}", "info")
+                self.log(f"  ≡ƒôü {label}: tipo={ptype}, subtipo={subtype}, offset=0x{p_offset:X}", "info")
                 
                 # Type 0 = app partitions
                 if ptype == 0:
                     if subtype == 0:  # factory app
                         factory_address = f"0x{p_offset:X}"
-                        self.log(f"  🏭 Factory app encontrada: {label} en {factory_address}", "success")
+                        self.log(f"  ≡ƒÅ¡ Factory app encontrada: {label} en {factory_address}", "success")
                     elif subtype == 0x10:  # OTA_0 (first OTA partition)
                         if app_address is None:  # Use first OTA partition if no factory
                             app_address = f"0x{p_offset:X}"
-                            self.log(f"  🔄 OTA app0 encontrada: {label} en {app_address}", "success")
+                            self.log(f"  ≡ƒöä OTA app0 encontrada: {label} en {app_address}", "success")
                     elif subtype == 0x11:  # OTA_1 (second OTA partition)
-                        self.log(f"  🔄 OTA app1 encontrada: {label} en 0x{p_offset:X}", "info")
+                        self.log(f"  ≡ƒöä OTA app1 encontrada: {label} en 0x{p_offset:X}", "info")
                 
                 # Type 1 = data partitions
                 elif ptype == 1:
                     if subtype == 0:  # OTA data
                         has_ota = True
-                        self.log(f"  📊 OTA data encontrada: {label} en 0x{p_offset:X}", "info")
+                        self.log(f"  ≡ƒôè OTA data encontrada: {label} en 0x{p_offset:X}", "info")
                 
                 offset += 32
             
@@ -3369,15 +3258,15 @@ spiffs,      data, spiffs,  0x2A0000, 1472K
             
             if final_address is None:
                 final_address = "0x10000"
-                self.log("⚠️ No se encontraron particiones app, usando 0x10000 por defecto", "warning")
+                self.log("ΓÜá∩╕Å No se encontraron particiones app, usando 0x10000 por defecto", "warning")
             else:
                 partition_type = "Factory" if factory_address else "OTA app0"
-                self.log(f"✅ Dirección de firmware detectada: {final_address} ({partition_type})", "success")
+                self.log(f"Γ£à Direcci├│n de firmware detectada: {final_address} ({partition_type})", "success")
             
             return final_address, has_ota
             
         except Exception as e:
-            self.log(f"❌ Error parseando partition table: {e}", "error")
+            self.log(f"Γ¥î Error parseando partition table: {e}", "error")
             self.log_debug(f"Exception details: {repr(e)}")
             return "0x10000", False
     
@@ -3455,18 +3344,18 @@ spiffs,      data, spiffs,  0x2A0000, 1472K
             process.wait()
             
             if process.returncode != 0:
-                self.log(f"Error al borrar flash - código de retorno: {process.returncode}", "error")
+                self.log(f"Error al borrar flash - c├│digo de retorno: {process.returncode}", "error")
                 self.log_debug(f"Erase failed with return code: {process.returncode}")
-                messagebox.showerror("Error", f"Error al borrar flash\n\nCódigo de error: {process.returncode}\n\nRevisa el log para detalles.")
+                messagebox.showerror("Error", f"Error al borrar flash\n\nC├│digo de error: {process.returncode}\n\nRevisa el log para detalles.")
                 return False
             
             self.log_debug("Erase completed successfully")
             return True
             
         except Exception as e:
-            self.log(f"Excepción durante borrado: {str(e)}", "error")
+            self.log(f"Excepci├│n durante borrado: {str(e)}", "error")
             self.log_debug(f"Exception in execute_erase: {repr(e)}")
-            messagebox.showerror("Error", f"Excepción durante borrado:\n{str(e)}")
+            messagebox.showerror("Error", f"Excepci├│n durante borrado:\n{str(e)}")
             return False
     
     def smart_erase(self, base_cmd, flasher_args):
@@ -3481,7 +3370,7 @@ spiffs,      data, spiffs,  0x2A0000, 1472K
                     # Round up to nearest 4KB
                     size_aligned = ((size + 4095) // 4096) * 4096
                     
-                    self.log(f"Borrando región {address} (tamaño: {size_aligned} bytes)...", "info")
+                    self.log(f"Borrando regi├│n {address} (tama├▒o: {size_aligned} bytes)...", "info")
                     
                     erase_cmd = base_cmd + ["erase-region", address, hex(size_aligned)]  # Updated: hyphenated
                     
@@ -3531,7 +3420,7 @@ spiffs,      data, spiffs,  0x2A0000, 1472K
             ]
             
             # Note: --verify removed in esptool v5+ (verification is automatic)
-            self.log_debug("Verificación automática (built-in en esptool v5+)")
+            self.log_debug("Verificaci├│n autom├ítica (built-in en esptool v5+)")
             
             self.log(f"  Comando: esptool write-flash {address} {os.path.basename(filepath)}", "info")
             self.log_debug(f"Comando completo: {' '.join(cmd)}")
@@ -3561,17 +3450,17 @@ spiffs,      data, spiffs,  0x2A0000, 1472K
                     
                     # Update status label based on esptool output
                     if "Connecting" in line:
-                        self.status_label.config(text="🔌 Connecting to device...")
+                        self.status_label.config(text="≡ƒöî Connecting to device...")
                     elif "Erasing" in line or "erase" in line.lower():
-                        self.status_label.config(text="🗑️ Erasing flash...")
+                        self.status_label.config(text="≡ƒùæ∩╕Å Erasing flash...")
                     elif "Writing at" in line:
-                        self.status_label.config(text="📤 Uploading data...")
+                        self.status_label.config(text="≡ƒôñ Uploading data...")
                     elif "Hash of data verified" in line:
-                        self.status_label.config(text="✅ Verifying upload...")
+                        self.status_label.config(text="Γ£à Verifying upload...")
                     elif "Compressed" in line:
-                        self.status_label.config(text="📦 Compressing data...")
+                        self.status_label.config(text="≡ƒôª Compressing data...")
                     elif "Uploading" in line:
-                        self.status_label.config(text="📤 Uploading stub...")
+                        self.status_label.config(text="≡ƒôñ Uploading stub...")
                     
                     output_lines.append(line)
                     self.log_debug(f"esptool: {line}", "verbose")
@@ -3607,7 +3496,7 @@ spiffs,      data, spiffs,  0x2A0000, 1472K
                         self.log_serial(f"ERROR: {line.strip()}", "rx")
             
             if process.returncode != 0:
-                self.log(f"  ERROR: Código de retorno {process.returncode}", "error")
+                self.log(f"  ERROR: C├│digo de retorno {process.returncode}", "error")
                 self.log_debug(f"Flash component failed with return code: {process.returncode}")
                 self.log_serial(f"FAILED: Return code {process.returncode}", "rx")
                 
@@ -3619,8 +3508,8 @@ spiffs,      data, spiffs,  0x2A0000, 1472K
                 
                 # Provide helpful error messages
                 if process.returncode == 2:
-                    self.log("  ⚠️ Error común: Verifica que el chip tenga bootloader y partition table", "warning")
-                    self.log("  ⚠️ Si el chip fue borrado completamente, usa Complete Mode", "warning")
+                    self.log("  ΓÜá∩╕Å Error com├║n: Verifica que el chip tenga bootloader y partition table", "warning")
+                    self.log("  ΓÜá∩╕Å Si el chip fue borrado completamente, usa Complete Mode", "warning")
                     self.log_serial("HINT: Chip may need bootloader - use Complete Mode", "rx")
                 
             return process.returncode == 0
@@ -3645,8 +3534,8 @@ spiffs,      data, spiffs,  0x2A0000, 1472K
         
         # Confirmar
         if not messagebox.askyesno("Confirmar Borrado", 
-                                   f"¿Estás seguro de que quieres BORRAR COMPLETAMENTE el flash de {port}?\n\n"
-                                   "Esta acción eliminará todo el contenido del ESP32."):
+                                   f"┬┐Est├ís seguro de que quieres BORRAR COMPLETAMENTE el flash de {port}?\n\n"
+                                   "Esta acci├│n eliminar├í todo el contenido del ESP32."):
             return
         
         # Iniciar borrado en un hilo separado
@@ -3673,12 +3562,12 @@ spiffs,      data, spiffs,  0x2A0000, 1472K
         
         # Confirmar
         if not messagebox.askyesno("Confirmar Borrado NVS", 
-                                   f"¿Estás seguro de que quieres BORRAR SOLO LA PARTICIÓN NVS de {port}?\n\n"
-                                   "Esto eliminará:\n"
-                                   "  • Configuración WiFi\n"
-                                   "  • Datos de aplicación guardados\n"
-                                   "  • Calibración y configuraciones\n\n"
-                                   "El bootloader y firmware NO se borrarán."):
+                                   f"┬┐Est├ís seguro de que quieres BORRAR SOLO LA PARTICI├ôN NVS de {port}?\n\n"
+                                   "Esto eliminar├í:\n"
+                                   "  ΓÇó Configuraci├│n WiFi\n"
+                                   "  ΓÇó Datos de aplicaci├│n guardados\n"
+                                   "  ΓÇó Calibraci├│n y configuraciones\n\n"
+                                   "El bootloader y firmware NO se borrar├ín."):
             return
         
         # Iniciar borrado en un hilo separado
@@ -3691,7 +3580,7 @@ spiffs,      data, spiffs,  0x2A0000, 1472K
         thread.start()
     
     def erase_nvs_partition(self, port):
-        """Borrar SOLO la partición NVS del ESP32"""
+        """Borrar SOLO la partici├│n NVS del ESP32"""
         try:
             self.log("=" * 60, "info")
             self.log(f"Iniciando BORRADO DE NVS en {port}...", "info")
@@ -3713,7 +3602,7 @@ spiffs,      data, spiffs,  0x2A0000, 1472K
             nvs_offset = 0x9000
             nvs_size = 0x5000
             
-            self.log(f"Borrando partición NVS: offset=0x{nvs_offset:X}, size=0x{nvs_size:X}", "info")
+            self.log(f"Borrando partici├│n NVS: offset=0x{nvs_offset:X}, size=0x{nvs_size:X}", "info")
             self.log_debug(f"NVS erase - chip: {chip}, baud: {baud_rate}")
             
             cmd = [
@@ -3754,26 +3643,26 @@ spiffs,      data, spiffs,  0x2A0000, 1472K
             if process.returncode == 0:
                 self.log("", "normal")
                 self.log("=" * 60, "success")
-                self.log(" ¡PARTICIÓN NVS BORRADA EXITOSAMENTE!", "success")
+                self.log(" ┬íPARTICI├ôN NVS BORRADA EXITOSAMENTE!", "success")
                 self.log("=" * 60, "success")
                 self.log_debug("NVS erase completed successfully")
-                messagebox.showinfo("Éxito", 
-                    "¡Partición NVS borrada completamente!\n\n"
+                messagebox.showinfo("├ëxito", 
+                    "┬íPartici├│n NVS borrada completamente!\n\n"
                     "WiFi y configuraciones eliminadas.\n"
                     "Bootloader y firmware intactos.\n\n"
-                    "El dispositivo iniciará con configuración de fábrica.")
+                    "El dispositivo iniciar├í con configuraci├│n de f├íbrica.")
             else:
                 self.log("=" * 60, "error")
-                self.log(f" Error al borrar NVS - código: {process.returncode}", "error")
+                self.log(f" Error al borrar NVS - c├│digo: {process.returncode}", "error")
                 self.log("=" * 60, "error")
                 self.log_debug(f"NVS erase failed with return code: {process.returncode}")
                 messagebox.showerror("Error", 
-                    f"Error al borrar partición NVS.\n\n"
-                    f"Código de error: {process.returncode}\n\n"
-                    f"Revisa el log para más detalles.")
+                    f"Error al borrar partici├│n NVS.\n\n"
+                    f"C├│digo de error: {process.returncode}\n\n"
+                    f"Revisa el log para m├ís detalles.")
                 
         except Exception as e:
-            self.log(f"Excepción: {str(e)}", "error")
+            self.log(f"Excepci├│n: {str(e)}", "error")
             self.log_debug(f"Exception in erase_nvs_partition: {repr(e)}")
             messagebox.showerror("Error", f"Error inesperado:\n{str(e)}")
         
@@ -3834,17 +3723,17 @@ spiffs,      data, spiffs,  0x2A0000, 1472K
             if process.returncode == 0:
                 self.log("", "normal")
                 self.log("=" * 60, "success")
-                self.log(" ¡FLASH BORRADO EXITOSAMENTE!", "success")
+                self.log(" ┬íFLASH BORRADO EXITOSAMENTE!", "success")
                 self.log("=" * 60, "success")
-                messagebox.showinfo("Éxito", "¡Flash borrado completamente!\n\nAhora puedes cargar el firmware.")
+                messagebox.showinfo("├ëxito", "┬íFlash borrado completamente!\n\nAhora puedes cargar el firmware.")
             else:
                 self.log("=" * 60, "error")
                 self.log(" Error al borrar el flash", "error")
                 self.log("=" * 60, "error")
-                messagebox.showerror("Error", "Error al borrar el flash.\nRevisa el log para más detalles.")
+                messagebox.showerror("Error", "Error al borrar el flash.\nRevisa el log para m├ís detalles.")
                 
         except Exception as e:
-            self.log(f"Excepción: {str(e)}", "error")
+            self.log(f"Excepci├│n: {str(e)}", "error")
             messagebox.showerror("Error", f"Error inesperado:\n{str(e)}")
         
         finally:
@@ -3853,21 +3742,21 @@ spiffs,      data, spiffs,  0x2A0000, 1472K
             self.progress.stop()
 
     def show_firmware_analysis(self):
-        """Mostrar análisis del firmware en una ventana emergente"""
+        """Mostrar an├ílisis del firmware en una ventana emergente"""
         if not self.firmware_path:
             messagebox.showerror("Error", "No hay archivo de firmware seleccionado.")
             return
         
         analysis = self.analyze_firmware()
         
-        # Crear ventana de análisis
+        # Crear ventana de an├ílisis
         analysis_window = tk.Toplevel(self.root)
-        analysis_window.title("Análisis de Firmware")
+        analysis_window.title("An├ílisis de Firmware")
         analysis_window.geometry("500x400")
         analysis_window.resizable(True, True)
         analysis_window.minsize(400, 300)
         
-        # Configurar expansión
+        # Configurar expansi├│n
         analysis_window.columnconfigure(0, weight=1)
         analysis_window.rowconfigure(0, weight=1)
         
@@ -3875,24 +3764,24 @@ spiffs,      data, spiffs,  0x2A0000, 1472K
         main_frame = ttk.Frame(analysis_window, padding="10")
         main_frame.pack(fill="both", expand=True)
         
-        # Configurar expansión del frame principal
+        # Configurar expansi├│n del frame principal
         main_frame.columnconfigure(0, weight=1)
         main_frame.rowconfigure(2, weight=1)  # tech_frame se expande
         
-        # Título
-        ttk.Label(main_frame, text="Análisis de Firmware ESP32", 
+        # T├¡tulo
+        ttk.Label(main_frame, text="An├ílisis de Firmware ESP32", 
                  font=('Arial', 12, 'bold')).grid(row=0, column=0, pady=5)
         
-        # Información del archivo
+        # Informaci├│n del archivo
         file_frame = ttk.LabelFrame(main_frame, text="Archivo", padding="5")
         file_frame.grid(row=1, column=0, sticky=(tk.W, tk.E), pady=5)
         
         ttk.Label(file_frame, text=f"Archivo: {os.path.basename(self.firmware_path)}").pack(anchor="w")
-        ttk.Label(file_frame, text=f"Tamaño: {self.get_file_size(self.firmware_path)}").pack(anchor="w")
+        ttk.Label(file_frame, text=f"Tama├▒o: {self.get_file_size(self.firmware_path)}").pack(anchor="w")
         ttk.Label(file_frame, text=f"Ruta: {self.firmware_path}").pack(anchor="w")
         
-        # Análisis técnico
-        tech_frame = ttk.LabelFrame(main_frame, text="Análisis Técnico", padding="5")
+        # An├ílisis t├⌐cnico
+        tech_frame = ttk.LabelFrame(main_frame, text="An├ílisis T├⌐cnico", padding="5")
         tech_frame.grid(row=2, column=0, sticky=(tk.W, tk.E, tk.N, tk.S), pady=5)
         tech_frame.columnconfigure(0, weight=1)
         tech_frame.rowconfigure(0, weight=1)
@@ -3912,32 +3801,32 @@ spiffs,      data, spiffs,  0x2A0000, 1472K
         rec_frame.grid(row=3, column=0, sticky=(tk.W, tk.E), pady=5)
         
         if "ESP32 original" in analysis:
-            ttk.Label(rec_frame, text="⚠️ Este firmware parece ser para ESP32 original", 
+            ttk.Label(rec_frame, text="ΓÜá∩╕Å Este firmware parece ser para ESP32 original", 
                      foreground="orange", font=('Arial', 9, 'bold')).pack(anchor="w")
-            ttk.Label(rec_frame, text="• Recompila tu proyecto para ESP32-S3", 
+            ttk.Label(rec_frame, text="ΓÇó Recompila tu proyecto para ESP32-S3", 
                      foreground="orange").pack(anchor="w")
         elif "ESP32-S3" in analysis:
-            ttk.Label(rec_frame, text="✅ Este firmware parece ser compatible con ESP32-S3", 
+            ttk.Label(rec_frame, text="Γ£à Este firmware parece ser compatible con ESP32-S3", 
                      foreground="green", font=('Arial', 9, 'bold')).pack(anchor="w")
         else:
-            ttk.Label(rec_frame, text="❓ Tipo de firmware incierto", 
+            ttk.Label(rec_frame, text="Γ¥ô Tipo de firmware incierto", 
                      foreground="gray", font=('Arial', 9, 'bold')).pack(anchor="w")
-            ttk.Label(rec_frame, text="• Verifica la compatibilidad con ESP32-S3", 
+            ttk.Label(rec_frame, text="ΓÇó Verifica la compatibilidad con ESP32-S3", 
                      foreground="gray").pack(anchor="w")
         
-        # Botón cerrar
+        # Bot├│n cerrar
         ttk.Button(main_frame, text="Cerrar", command=analysis_window.destroy).grid(row=4, column=0, pady=10)
 
     def create_esp32s3_bootloader(self):
         """Crear un bootloader funcional para ESP32-S3 basado en ESP-IDF"""
         try:
-            # Usar esptool para generar un bootloader válido
-            self.log("🔧 Generando bootloader ESP32-S3 con esptool...", "info")
+            # Usar esptool para generar un bootloader v├ílido
+            self.log("≡ƒöº Generando bootloader ESP32-S3 con esptool...", "info")
             
             # Crear un archivo temporal para el bootloader
             temp_bootloader = os.path.join(tempfile.gettempdir(), "esp32s3_bootloader.bin")
             
-            # Template de bootloader mínimo ESP32-S3 basado en ESP-IDF 5.x
+            # Template de bootloader m├¡nimo ESP32-S3 basado en ESP-IDF 5.x
             bootloader_template = bytearray([
                 # Image header
                 0xE9, 0x02, 0x02, 0x0F,  # magic, segments, spi_mode, spi_speed_size
@@ -3972,7 +3861,7 @@ spiffs,      data, spiffs,  0x2A0000, 1472K
             template_len = min(len(bootloader_template), len(bootloader))
             bootloader[0:template_len] = bootloader_template[0:template_len]
             
-            # Simular código de bootloader principal (simplificado)
+            # Simular c├│digo de bootloader principal (simplificado)
             main_code_start = len(bootloader_template)
             main_code = self._create_esp32s3_boot_code()
             
@@ -3987,23 +3876,23 @@ spiffs,      data, spiffs,  0x2A0000, 1472K
             with open(temp_bootloader, 'wb') as f:
                 f.write(bootloader)
             
-            self.log(f"✅ Bootloader ESP32-S3 generado: {temp_bootloader}", "success")
+            self.log(f"Γ£à Bootloader ESP32-S3 generado: {temp_bootloader}", "success")
             return temp_bootloader
             
         except Exception as e:
-            self.log(f"❌ Error creando bootloader: {e}", "error")
+            self.log(f"Γ¥î Error creando bootloader: {e}", "error")
             return None
     
     def _create_esp32s3_boot_code(self):
-        """Crear código de bootloader principal simplificado"""
-        # Código mínimo que:
+        """Crear c├│digo de bootloader principal simplificado"""
+        # C├│digo m├¡nimo que:
         # 1. Inicializa el chip
         # 2. Lee la tabla de particiones desde 0x8000
-        # 3. Busca la partición app
-        # 4. Salta a la aplicación
+        # 3. Busca la partici├│n app
+        # 4. Salta a la aplicaci├│n
         
         boot_code = bytearray([
-            # Inicialización básica
+            # Inicializaci├│n b├ísica
             0x00, 0x00, 0x00, 0x00,  # Stack setup
             0x00, 0x80, 0x05, 0x40,  # Load partition table addr (0x8000)
             0x00, 0x00, 0x00, 0x00,  # Read partition table
@@ -4011,7 +3900,7 @@ spiffs,      data, spiffs,  0x2A0000, 1472K
             0x00, 0x00, 0x10, 0x00,  # Default app addr (0x10000)
             0x00, 0x80, 0x37, 0x40,  # Jump to application
             
-            # Padding hasta completar el tamaño mínimo
+            # Padding hasta completar el tama├▒o m├¡nimo
         ])
         
         # Rellenar hasta 1KB con NOPs
@@ -4030,33 +3919,33 @@ spiffs,      data, spiffs,  0x2A0000, 1472K
                 header = f.read(16)
             
             if len(header) < 16:
-                return "Archivo demasiado pequeño"
+                return "Archivo demasiado peque├▒o"
             
             # Verificar magic byte ESP32
             if header[0] != 0xE9:
-                return "No es un archivo ESP32 válido (magic byte incorrecto)"
+                return "No es un archivo ESP32 v├ílido (magic byte incorrecto)"
             
-            # Analizar chip ID si está presente
+            # Analizar chip ID si est├í presente
             segment_count = header[1]
             spi_mode = header[2]
             spi_speed_size = header[3]
             entry_point = int.from_bytes(header[4:8], 'little')
             
             analysis = []
-            analysis.append(f"Magic byte: 0x{header[0]:02X} ✓")
+            analysis.append(f"Magic byte: 0x{header[0]:02X} Γ£ô")
             analysis.append(f"Segmentos: {segment_count}")
             analysis.append(f"Modo SPI: {spi_mode} ({'DIO' if spi_mode == 2 else 'Otro'})")
             analysis.append(f"Entry point: 0x{entry_point:08X}")
             
             # Detectar tipo de chip por entry point
             if 0x40000000 <= entry_point <= 0x4001FFFF:
-                analysis.append("🔍 Posible ESP32 original (entry point en IRAM0)")
+                analysis.append("≡ƒöì Posible ESP32 original (entry point en IRAM0)")
             elif 0x40370000 <= entry_point <= 0x4037FFFF:
-                analysis.append("🔍 Posible ESP32-S3 (entry point en IRAM)")
+                analysis.append("≡ƒöì Posible ESP32-S3 (entry point en IRAM)")
             elif 0x40380000 <= entry_point <= 0x4038FFFF:
-                analysis.append("🔍 Posible ESP32-S2/S3 (entry point alto)")
+                analysis.append("≡ƒöì Posible ESP32-S2/S3 (entry point alto)")
             else:
-                analysis.append(f"🔍 Entry point inusual: 0x{entry_point:08X}")
+                analysis.append(f"≡ƒöì Entry point inusual: 0x{entry_point:08X}")
             
             return "\n".join(analysis)
             

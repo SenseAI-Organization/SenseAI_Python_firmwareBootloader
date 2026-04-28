@@ -22,7 +22,7 @@ exe = EXE(
     a.binaries,
     a.datas,
     [],
-    name='ESP32_Flasher',
+    name='Sense-esp32_flasher',
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
@@ -35,4 +35,5 @@ exe = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
+    icon=['C:\\Users\\escob\\Desktop\\SenseAI\\LibreriasSense\\SenseAI_Python_firmwareBootloader\\app_generation\\IsotipoSense.ico'],
 )

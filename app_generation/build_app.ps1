@@ -2,13 +2,17 @@
 PowerShell build script to create a Windows executable using PyInstaller.
 
 Usage (PowerShell):
-  .\build_app.ps1
+  Set-ExecutionPolicy -Scope Process -ExecutionPolicy RemoteSigned
+  .\app_generation\build_app.ps1
 
 What it does:
- - Creates a virtual environment in `app_generation\.venv`
+ - Creates (or repairs) a virtual environment in `app_generation\.venv`
  - Installs dependencies from `requirements.txt` (repo root)
- - Runs PyInstaller to create a single-file executable
+ - Runs PyInstaller to create a single-file windowed executable
  - Places output in `app_generation_output` (repo root)
+
+Options:
+  -ConsoleTest   Build with a visible console window (useful for debugging crashes)
 #>
 param(
     [switch]$ConsoleTest
@@ -16,84 +20,108 @@ param(
 
 $ErrorActionPreference = 'Stop'
 
-$scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Definition
-$repoRoot = Resolve-Path (Join-Path $scriptDir "..")
-$outputDir = Join-Path $repoRoot "app_generation_output"
-$venvDir = Join-Path $scriptDir ".venv"
+$scriptDir  = Split-Path -Parent $MyInvocation.MyCommand.Definition
+$repoRoot   = (Resolve-Path (Join-Path $scriptDir "..")).Path
+$outputDir  = Join-Path $repoRoot "app_generation_output"
+$venvDir    = Join-Path $scriptDir ".venv"
+$venvPython = Join-Path $venvDir "Scripts\python.exe"
 
-Write-Host "Repo root: $repoRoot"
+$exeName    = "Sense-esp32_flasher"
+$iconPath   = Join-Path $scriptDir "IsotipoSense.ico"
+$mainScript = Join-Path $repoRoot "firmwareBootLoader.py"
+$spiffsSrc  = Join-Path $repoRoot "data\spiffs.bin"
+
+Write-Host "Repo root:  $repoRoot"
 Write-Host "Output dir: $outputDir"
 
 if (-not (Test-Path $outputDir)) {
     New-Item -ItemType Directory -Path $outputDir | Out-Null
 }
 
-if (-not (Test-Path $venvDir)) {
-    Write-Host "Creating virtual environment..."
-    python -m venv $venvDir
-}
-
-$venvPython = Join-Path $venvDir "Scripts\python.exe"
-if (-not (Test-Path $venvPython)) {
-    Write-Host "Virtualenv python not found, falling back to system python"
-    $venvPython = "python"
-}
-
-Write-Host "Installing dependencies into virtualenv..."
-& $venvPython -m pip install --upgrade pip
-& $venvPython -m pip install -r (Join-Path $repoRoot "requirements.txt")
-
-Write-Host "Ensuring PyInstaller available..."
-& $venvPython -m pip install "pyinstaller>=5.0"
-
-# Build args
-$mainScript = Join-Path $repoRoot "firmwareBootLoader.py"
-$spiffsSrc = Join-Path $repoRoot "data\spiffs.bin"
-
 if (-not (Test-Path $mainScript)) {
     Write-Error "Main script not found: $mainScript"
     exit 1
 }
 
-if (-not (Test-Path $spiffsSrc)) {
-    Write-Warning "Warning: data/spiffs.bin not found. The generated EXE will not include SPIFFS image."
-}
-
-Write-Host "Running PyInstaller (this may take a while)..."
-
-# For Windows the --add-data separator is ;
-$addDataArg = $null
-if (Test-Path $spiffsSrc) {
-    # Format: "<abs_path>;<destination_folder_inside_exe>"
-    $addDataArg = "--add-data"
-    $addDataValue = """$spiffsSrc;data"""
-}
-
-# Prepare argument list for PyInstaller invocation
-$pyinstallerArgs = @('--noconfirm','--onefile','--name=ESP32_Flasher')
-if (-not $ConsoleTest) {
-    # Default: windowed (no console)
-    $pyinstallerArgs += '--windowed'
+# --- Venv: create or repair ---
+# Check if pip is functional; rebuild the venv if it is broken.
+$needRebuild = $false
+if (-not (Test-Path $venvPython)) {
+    $needRebuild = $true
+    Write-Host "Virtual environment not found - creating..."
 } else {
-    Write-Host "ConsoleTest requested - building console EXE for debugging"
-}
-if ($addDataArg) { $pyinstallerArgs += $addDataArg; $pyinstallerArgs += $addDataValue }
-$pyinstallerArgs += @('--distpath', (Resolve-Path $outputDir).Path, '--workpath', (Join-Path $outputDir 'build'), '--specpath', (Join-Path $outputDir 'specs'), (Resolve-Path $mainScript).Path)
-
-Write-Host "pyinstaller args: $pyinstallerArgs"
-
-& $venvPython -m PyInstaller @pyinstallerArgs
-
-Write-Host "PyInstaller finished. Output placed in: $outputDir"
-
-# Also copy the spiffs.bin next to the exe for convenience
-if (Test-Path $spiffsSrc) {
-    try {
-        Copy-Item -Path $spiffsSrc -Destination (Join-Path $outputDir "spiffs.bin") -Force
-        Write-Host "Copied spiffs.bin to output folder"
-    } catch {
-        Write-Warning "Failed to copy spiffs.bin to output folder: $_"
+    & $venvPython -m pip --version 2>&1 | Out-Null
+    if ($LASTEXITCODE -ne 0) {
+        $needRebuild = $true
+        Write-Host "Virtual environment is broken - rebuilding..."
+        Remove-Item -Recurse -Force $venvDir
     }
 }
 
-Write-Host "Build complete. You can find the EXE at: $outputDir\ESP32_Flasher.exe"
+if ($needRebuild) {
+    python -m venv $venvDir
+}
+
+# --- Install / upgrade dependencies ---
+Write-Host "Installing dependencies..."
+& $venvPython -m pip install --upgrade pip -q
+& $venvPython -m pip install -r (Join-Path $repoRoot "requirements.txt") pyinstaller pillow -q
+Write-Host "Dependencies installed."
+
+# --- Convert PNG icon to ICO if needed ---
+if (-not (Test-Path $iconPath)) {
+    $pngPath = Join-Path $scriptDir "IsotipoSense.png"
+    if (Test-Path $pngPath) {
+        Write-Host "Converting PNG icon to ICO..."
+        & $venvPython -c "
+from PIL import Image
+img = Image.open(r'$pngPath').convert('RGBA')
+img.save(r'$iconPath', format='ICO', sizes=[(16,16),(32,32),(48,48),(64,64),(128,128),(256,256)])
+print('ICO created.')
+"
+    } else {
+        Write-Warning "Icon not found at $iconPath - building without icon."
+        $iconPath = $null
+    }
+}
+
+# --- Build PyInstaller args ---
+Write-Host "Running PyInstaller (this may take a while)..."
+
+$pyArgs = @(
+    '--noconfirm',
+    '--onefile',
+    "--name=$exeName"
+)
+
+if (-not $ConsoleTest) {
+    $pyArgs += '--windowed'
+} else {
+    Write-Host "ConsoleTest mode: building with console window."
+}
+
+if ($iconPath -and (Test-Path $iconPath)) {
+    $pyArgs += "--icon=$iconPath"
+}
+
+if (Test-Path $spiffsSrc) {
+    $pyArgs += "--add-data=$spiffsSrc;data"
+} else {
+    Write-Warning "data\spiffs.bin not found - EXE will not bundle a SPIFFS image."
+}
+
+$pyArgs += "--distpath=$outputDir"
+$pyArgs += "--workpath=$(Join-Path $outputDir 'build')"
+$pyArgs += "--specpath=$(Join-Path $outputDir 'specs')"
+$pyArgs += $mainScript
+
+& $venvPython -m PyInstaller @pyArgs
+
+if ($LASTEXITCODE -ne 0) {
+    Write-Error "PyInstaller failed with exit code $LASTEXITCODE"
+    exit $LASTEXITCODE
+}
+
+Write-Host ""
+Write-Host "Build complete! EXE located at:"
+Write-Host "  $outputDir\$exeName.exe"
