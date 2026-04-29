@@ -3081,6 +3081,17 @@ spiffs,      data, spiffs,  0x2A0000, 1472K
             
             # STEP 1: Erase flash if needed
             if mode == "simple":
+                # Detect the real firmware address from the device's partition table
+                # (handles OTA layouts where app is NOT at the default 0x10000)
+                detected_addr, _ = self.detect_firmware_address_for_simple_mode(
+                    python_exe, chip, port, baud_rate
+                )
+                # Update flasher_args so both erase and flash use the correct address
+                flasher_args['flash_files'] = [
+                    (detected_addr if "Firmware" in desc else addr, fp, desc)
+                    for addr, fp, desc in flasher_args['flash_files']
+                ]
+
                 # SIMPLE MODE: ALWAYS smart erase (only app region)
                 # NEVER touches: bootloader, partitions, NVS
                 self.log("PASO 1: Borrado inteligente - Solo firmware (preserva bootloader/partitions/NVS)...", "info")
@@ -3301,10 +3312,74 @@ spiffs,      data, spiffs,  0x2A0000, 1472K
             return None
     
     def get_firmware_address_simple(self):
-        """Determine firmware flash address for simple mode"""
+        """Determine firmware flash address for simple mode (fallback only)"""
         # PlatformIO default: bootloader @ 0x0, partitions @ 0x8000, app @ 0x10000
         # This is the standard layout for most ESP32/ESP32-S3 projects
+        # NOTE: Always use detect_firmware_address_for_simple_mode() at flash time
+        # to get the real address from the partition table on the device.
         return "0x10000"
+
+    def detect_firmware_address_for_simple_mode(self, python_exe, chip, port, baud_rate):
+        """Detect the actual firmware flash address for Simple Mode.
+
+        Strategy (in order):
+        1. Parse self.partitions_path if it points to a valid file (fast, no device needed).
+        2. Read the partition table binary directly from the connected device at 0x8000.
+        3. Fall back to 0x10000 (standard PlatformIO layout).
+
+        Returns (address_str, has_ota), e.g. ("0x50000", True).
+        """
+        import tempfile
+
+        # --- Strategy 1: use the partitions file already loaded ---
+        if self.partitions_path and os.path.exists(self.partitions_path):
+            try:
+                addr, has_ota = self.parse_partition_table_file(self.partitions_path)
+                if addr:
+                    self.log(f"Dirección de firmware detectada desde archivo de particiones: {addr}", "info")
+                    return addr, has_ota
+            except Exception as e:
+                self.log_debug(f"No se pudo parsear partitions_path en Simple Mode: {e}")
+
+        # --- Strategy 2: read partition table from device ---
+        self.log("Leyendo tabla de particiones del dispositivo para detectar dirección de firmware...", "info")
+        tmp_path = None
+        try:
+            with tempfile.NamedTemporaryFile(suffix='.bin', delete=False) as tmp:
+                tmp_path = tmp.name
+
+            read_cmd = [
+                python_exe, "-m", "esptool",
+                "--chip", chip,
+                "--port", port,
+                "--baud", baud_rate,
+                "--before", "default-reset",
+                "--after", "no-reset",
+                "read-flash", "0x8000", "0xC00",  # 3 KB — enough for the partition table
+                tmp_path
+            ]
+
+            result = subprocess.run(read_cmd, capture_output=True, text=True, timeout=20)
+
+            if result.returncode == 0 and os.path.exists(tmp_path) and os.path.getsize(tmp_path) > 0:
+                addr, has_ota = self.parse_partition_table_file(tmp_path)
+                if addr:
+                    self.log(f"Dirección de firmware detectada desde dispositivo: {addr} (OTA: {has_ota})", "success")
+                    return addr, has_ota
+            else:
+                self.log_debug(f"Lectura de tabla de particiones falló: {result.stderr.strip()}")
+        except Exception as e:
+            self.log_debug(f"Excepción al leer tabla de particiones del dispositivo: {e}")
+        finally:
+            if tmp_path and os.path.exists(tmp_path):
+                try:
+                    os.unlink(tmp_path)
+                except Exception:
+                    pass
+
+        # --- Strategy 3: fallback ---
+        self.log("No se pudo detectar dirección de firmware; usando 0x10000 (layout estándar PlatformIO).", "warning")
+        return "0x10000", False
     
     def parse_partition_table_file(self, partitions_path):
         """Parse partition table file (CSV or BIN) to find app address and OTA status"""
